@@ -26,7 +26,20 @@ def frame_distance(frame1: np.ndarray, frame2: np.ndarray, stride: int = 20):
 
     return x
 
-def find_frame_diffs(file_path, stride:int = 20):
+def convert_to_black_white(frame, idx, cutoff=550):
+    """
+    Convert a frame to black/white. 
+    """
+    summed_frame = frame.sum(axis=2)
+    black_white_frame = np.where(summed_frame>cutoff, 255, 1)
+    fourier = np.fft.fftshift(np.fft.fft2(black_white_frame))
+
+    #cv2.imwrite(f'images/frame {idx} original.png', frame)
+    #cv2.imwrite(f'images/frame {idx} bw.png', black_white_frame)
+    
+    return black_white_frame
+
+def find_frame_diffs(file_path, stride:int = 20, start:float=0, end:float=None):
     """
     Find the frame_by_frame difference in a video. This also returns the frame
     rate because we're going to need it later and this is the most convenient
@@ -57,6 +70,8 @@ def find_frame_diffs(file_path, stride:int = 20):
 
         if ret:
 
+            #if idx > 9000:
+            #    return fps, frame_diffs
             if curr_frame is None:
                 curr_frame = frame
             else:
@@ -101,6 +116,8 @@ if __name__ == '__main__':
     parser.add_argument("output", type=str)
     parser.add_argument("--stride", type=int, default=20)
     parser.add_argument("--threshold", type=float, default=5.0)
+    parser.add_argument("--start", type=float, default=0)
+    parser.add_argument("--end", type=float, default=None)
     args = parser.parse_args()
 
     fps, frame_diffs = find_frame_diffs(args.video, stride=args.stride)

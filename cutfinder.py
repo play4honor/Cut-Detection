@@ -34,8 +34,8 @@ def convert_to_black_white(frame, idx, cutoff=550):
     black_white_frame = np.where(summed_frame>cutoff, 255, 1)
     fourier = np.fft.fftshift(np.fft.fft2(black_white_frame))
     
-    if not os.path.isdir('images'):
-        os.mkdir('images')
+    #if not os.path.isdir('images'):
+    #    os.mkdir('images')
     #cv2.imwrite(f'images/frame {idx} original.png', frame)
     #cv2.imwrite(f'images/frame {idx} bw.png', black_white_frame)
     

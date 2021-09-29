@@ -111,5 +111,5 @@ if __name__ == '__main__':
 
         for t in cut_idx * (1/fps):
 
-            nice_time = get_timestamp_from_seconds(t)
+            nice_time = str(t)
             f.write(nice_time + "\n")

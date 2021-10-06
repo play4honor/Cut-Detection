@@ -67,7 +67,12 @@ else:
 
         curr_cut = st.sidebar.number_input("Cut", min_value=1, max_value=cuts.shape[0], value=1)
 
-        st.sidebar.dataframe(cuts.style.apply(
+        min_row = max(0, curr_cut - 5)
+        max_row = min(cuts.shape[0], curr_cut + 3)
+
+        df = cuts.iloc[min_row:max_row, :]
+
+        st.sidebar.dataframe(df.style.apply(
             lambda x: ['background: lightgreen' if x.name == curr_cut - 1 else '' for i in x], 
             axis=1)
         )

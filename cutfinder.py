@@ -98,7 +98,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("video", type=str)
-    parser.add_argument("output", type=str)
+    parser.add_argument("cut_output", type=str)
+    parser.add_argument("--diff-output", type=str, default=None)
     parser.add_argument("--stride", type=int, default=20)
     parser.add_argument("--threshold", type=float, default=5.0)
     args = parser.parse_args()
@@ -107,9 +108,17 @@ if __name__ == '__main__':
 
     cut_idx = find_cut_indices(frame_diffs, threshold=args.threshold)
 
-    with open(args.output, "w") as f:
+    with open(args.cut_output, "w") as f:
 
         for t in cut_idx * (1/fps):
 
             nice_time = str(t)
             f.write(nice_time + "\n")
+
+    if args.diff_output is not None:
+
+        with open(args.diff_output, "w") as f:
+
+            for t in frame_diffs:
+
+                f.write(str(t) + "\n")

@@ -1,2 +1,5 @@
 video/
 *.ipynb
+*.mp4
+*.txt
+*.csv

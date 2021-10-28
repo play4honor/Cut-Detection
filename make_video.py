@@ -16,7 +16,7 @@ def load_cut_DF(fileName):
     df = pandas.read_csv(fileName)
 
     df = df[df['video'].isnull() == False].reset_index(drop=True)
-    df['filename'] = 'Q'+df['q'].astype(str)+' '+df['time'].astype(str)
+    df['filename'] = 'Q'+df['q'].astype(str)+'_'+df['time'].astype(str)
     df['repeat'] = (df['filename'].duplicated())
     
     while df['repeat'].sum() > 0:
@@ -25,7 +25,7 @@ def load_cut_DF(fileName):
 
     df['end_time'] = df['secs'].shift(-1)
     df['length'] = df['end_time']-df['secs']
-
+    df['filename'] = df['filename'].str.replace(':', '')
     return df
 
 def select_plays(df, fileName='', min=0, max=None):
@@ -33,11 +33,11 @@ def select_plays(df, fileName='', min=0, max=None):
     joined = pandas.merge(df,y,how='inner', on=('date','playid'))
     return joined
 
-def ffmpeg_make_clips(df, file, fileName='test'):
+def ffmpeg_make_clips(df, file, fileName='test', combine=True):
     ffmpegStrings = []
     string = ''
     for row in df.iterrows():
-        clipName = f'ffmpeg/{fileName}{row[0]}.mp4'
+        clipName = f'ffmpeg/{fileName}_{row[1]["filename"]}.mp4'
         ffmpegStrings.append(f'ffmpeg -hide_banner -ss {row[1]["secs"]} -i {file} -codec copy -t {row[1]["length"]} {clipName}')
         #ffmpegStrings.append(f'ffmpeg -hide_banner -ss {row[1]["secs"]} -i {file} -codec copy -t {row[1]["length"]} ffmpeg/{fileName}{row[0]}.mp4')
         string += f"file '{clipName}'\n"
@@ -47,22 +47,24 @@ def ffmpeg_make_clips(df, file, fileName='test'):
         print (string)
         temp = string.split(' ')
         subprocess.run(temp)
-    combiner = f'ffmpeg -f concat -i {fileName}_list.txt -c copy {fileName}.mp4'
-    print (combiner)
-    subprocess.run(combiner.split(' '))
+    if combine:
+        combiner = f'ffmpeg -f concat -i {fileName}_list.txt -c copy {fileName}.mp4'
+        print (combiner)
+        subprocess.run(combiner.split(' '))
 
 if __name__ == '__main__':
     try:
         game = sys.argv[1]
         fileName = sys.argv[2]
+        combine = sys.argv[3]
     except: 
-        print ("1st arg is game\n2nd arg is fileName")
+        print ("1st arg is game\n2nd arg is fileName\n3rd arg is combine boolean")
         sys.exit()
     df = load_cut_DF(f'cutData/{game}.csv')
     print (df)
     plays = select_plays(df, f'cutData/{fileName}.csv')
     print (plays)
     #sys.exit()
-    ffmpeg_make_clips(plays, f'videos/{game}.mp4', f"{game}_{fileName}")
+    ffmpeg_make_clips(plays, f'videos/{game}.mp4', f"{game}_{fileName}", combine)
 
 #ffmpeg -f concat -safe 0 -i {fileName}.txt -c copy output.wav

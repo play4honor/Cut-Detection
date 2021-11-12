@@ -52,19 +52,36 @@ def ffmpeg_make_clips(df, file, fileName='test', combine=True):
         print (combiner)
         subprocess.run(combiner.split(' '))
 
+def find_videos(game):
+    videos = [v.replace('.mp4', '') for v in os.listdir('videos')
+                if game in v]
+    for video in videos:
+        print (video)
+    return videos
+
 if __name__ == '__main__':
     try:
         game = sys.argv[1]
         fileName = sys.argv[2]
-        combine = sys.argv[3]
+        combineOnly = sys.argv[3]
     except: 
-        print ("1st arg is game\n2nd arg is fileName\n3rd arg is combine boolean")
+        print ("1st arg is game\n2nd arg is fileName")
         sys.exit()
-    df = load_cut_DF(f'cutData/{game}.csv')
-    print (df)
-    plays = select_plays(df, f'cutData/{fileName}.csv')
-    print (plays)
-    #sys.exit()
-    ffmpeg_make_clips(plays, f'videos/{game}.mp4', f"{game}_{fileName}", combine)
+
+    combiner = ''
+    videos = find_videos(game)
+    for game in videos:
+        if  combineOnly.lower() == 'yes':
+            combiner = f'ffmpeg -f concat -i {game}_{fileName}_list.txt -c copy {game}_{fileName}.mp4'
+            print (combiner)
+            subprocess.run(combiner.split(' '))
+        else:
+            df = load_cut_DF(f'cutData/{game}.csv')
+            print (df)
+            plays = select_plays(df, f'cutData/{fileName}.csv')
+            print (plays)
+            #sys.exit()
+            ffmpeg_make_clips(plays, f'videos/{game}.mp4', f"{game}_{fileName}")
+        combiner += f"file '{game}_{fileName}.mp4')"
 
 #ffmpeg -f concat -safe 0 -i {fileName}.txt -c copy output.wav

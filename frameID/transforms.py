@@ -24,31 +24,6 @@ class MaybeTransformation(nn.Module):
             x = self.transform(x, **self.args)
         return x
 
-class RandomScaleAndRotate(MaybeTransformation):
-    """Randomly scale and rotate an image."""
-
-    def __init__(self, prob:float=1.0):
-
-        super(RandomScaleAndRotate, self).__init__(
-            transforms.RandomAffine(
-                degrees=15,
-                translate=(0.1, 0.1),
-                scale=(1, 1.4)),
-            prob
-        )
-
-class RandomColorJitter(MaybeTransformation):
-    """Randomly change the brightness, contrast and saturation of an image."""
-
-    def __init__(self, prob:float=1.0):
-
-        super(RandomColorJitter, self).__init__(
-            transforms.ColorJitter(
-                brightness=0.4,
-                contrast=0.4,
-                saturation=0.4),
-            prob
-        )
 
 def random_adjust_brightness(batch:torch.Tensor, range):
 
@@ -58,7 +33,7 @@ def random_adjust_brightness(batch:torch.Tensor, range):
     brightness_factors = range[0] + (torch.rand([n_img, 1, 1, 1]) * (range[1] - range[0]))
     zero_tensor = torch.zeros_like(batch)
 
-    return (brightness_factors * batch) + ((1 - brightness_factors) * zero_tensor)
+    return torch.clamp((brightness_factors * batch) + ((1 - brightness_factors) * zero_tensor), 0.0, 1.0)
 
 def random_adjust_contrast(batch:torch.Tensor, range):
 
@@ -67,7 +42,7 @@ def random_adjust_contrast(batch:torch.Tensor, range):
     contrast_factors = range[0] + (torch.rand([n_img, 1, 1, 1]) * (range[1] - range[0]))
     img_means = torch.mean(transforms.functional.rgb_to_grayscale(batch), dim=(-3, -2, -1), keepdim=True)
 
-    return contrast_factors * batch + (1 - contrast_factors) * img_means
+    return torch.clamp(contrast_factors * batch + (1 - contrast_factors) * img_means, 0.0, 1.0)
 
 class RandomTransformation(nn.Module):
     """Apply a set of transformations randomly to a batch."""
@@ -142,7 +117,7 @@ if __name__ == "__main__":
     from torchvision.utils import save_image
     from torch.utils.data import DataLoader
 
-    p = 0.8
+    p = 0.8q
 
     trs = RandomTransformation(
         [

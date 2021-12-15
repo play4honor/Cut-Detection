@@ -117,7 +117,7 @@ if __name__ == "__main__":
     from torchvision.utils import save_image
     from torch.utils.data import DataLoader
 
-    p = 0.8q
+    p = 0.8
 
     trs = RandomTransformation(
         [

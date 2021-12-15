@@ -2,4 +2,7 @@ video/
 *.ipynb
 *.txt
 *.png
+*.jpg
 *.mp4
+data/
+frameID/__pycache__/

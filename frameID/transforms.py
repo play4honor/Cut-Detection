@@ -11,16 +11,17 @@ from torch.utils.data import Dataset
 class MaybeTransformation(nn.Module):
     """Apply a transformation with a given probability."""
     
-    def __init__(self, transform, prob:float=1.0):
+    def __init__(self, transform, args:dict, prob:float=1.0):
 
         super(MaybeTransformation, self).__init__()
         self.transform = transform
         self.prob = prob
+        self.args = args
 
     def forward(self, x):
 
         if torch.rand(1) < self.prob:
-            x = self.transform(x)
+            x = self.transform(x, **self.args)
         return x
 
 class RandomScaleAndRotate(MaybeTransformation):
@@ -49,8 +50,27 @@ class RandomColorJitter(MaybeTransformation):
             prob
         )
 
+def random_adjust_brightness(batch:torch.Tensor, range):
+
+    n_img = batch.shape[0]
+
+    # Brightness factors must have same number of dimensions as batch of images.
+    brightness_factors = range[0] + (torch.rand([n_img, 1, 1, 1]) * (range[1] - range[0]))
+    zero_tensor = torch.zeros_like(batch)
+
+    return (brightness_factors * batch) + ((1 - brightness_factors) * zero_tensor)
+
+def random_adjust_contrast(batch:torch.Tensor, range):
+
+    n_img = batch.shape[0]
+
+    contrast_factors = range[0] + (torch.rand([n_img, 1, 1, 1]) * (range[1] - range[0]))
+    img_means = torch.mean(transforms.functional.rgb_to_grayscale(batch), dim=(-3, -2, -1), keepdim=True)
+
+    return contrast_factors * batch + (1 - contrast_factors) * img_means
+
 class RandomTransformation(nn.Module):
-    """Apply a set of transformations randomly to an image."""
+    """Apply a set of transformations randomly to a batch."""
 
     def __init__(self, transforms:list):
 
@@ -81,7 +101,6 @@ class ContrastiveFrameDataset(Dataset):
 
         self.ext = ext
         self.path = path
-        self.transforms = transforms
         self.read_mode = ImageReadMode.UNCHANGED
 
         self.file_list = self._parse_path(self.path)
@@ -109,37 +128,42 @@ class ContrastiveFrameDataset(Dataset):
         p = self.file_list[idx]
         x = read_image(p, self.read_mode)
         # We need this format for stuff.
-        a = self.transforms(x).float() / 255
-        b = self.transforms(x).float() / 255
+        x = x.float() / 255
 
-        return {"a": a, "b": b}
+        return x
 
     def __len__(self):
 
         return len(self.file_list)
 
+
 if __name__ == "__main__":
 
     from torchvision.utils import save_image
+    from torch.utils.data import DataLoader
 
     p = 0.8
 
     trs = RandomTransformation(
         [
-            RandomScaleAndRotate(p),
-            RandomColorJitter(p)
+            MaybeTransformation(random_adjust_brightness, {"range": [0.5, 1.5]}, p),
+            MaybeTransformation(random_adjust_contrast, {"range": [0.5, 1.5]}, p),
         ]
     )
 
-    ds = ContrastiveFrameDataset(
-        "data/ravens-lions",
-        trs,
-        ".jpg",
-    )
+    ds = ContrastiveFrameDataset("data/ravens-lions", ".jpg")
 
-    print(len(ds))
-    print(ds[0])
-    example = ds[0]
-    save_image(example["a"], "example_a.jpg")
-    save_image(example["b"], "example_b.jpg")
-    print(ds[0]["a"].shape)
+    dl = DataLoader(ds, 64)
+
+    batch = next(iter(dl))
+
+    print(batch.shape)
+
+    a = trs(batch)
+
+    print(a.shape)
+
+    save_image(a[0, :], "example_a.jpg")
+
+    b = trs(batch)
+    save_image(b[0, :], "example_b.jpg")

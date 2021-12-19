@@ -67,11 +67,12 @@ class ContrastiveFrameDataset(Dataset):
         # We need this format for stuff.
         x = x.float() / 255
 
-        x_tr = self.trs(x)
+        # We apply each transformation twice.
 
         return {
             "x": x,
-            "x_transformed": x_tr
+            "x_t1": self.trs(x),
+            "x_t2": self.trs(x),
         }
 
     def __len__(self):

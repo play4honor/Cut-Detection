@@ -153,6 +153,9 @@ class FrameNet(nn.Module):
 
         return x
 
+    def num_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
 if __name__ == "__main__":
 
     net = FrameNet()

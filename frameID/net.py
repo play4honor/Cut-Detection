@@ -4,6 +4,10 @@ import torch.nn.functional as F
 
 
 class CNNLayer(nn.Module):
+    """
+    Small module for building convolutional networks.
+    """
+
     def __init__(
         self, conv_args: dict, max_pool_args: dict, activation=nn.ReLU, batch_norm=True
     ):
@@ -32,6 +36,10 @@ class CNNLayer(nn.Module):
 
 
 class FCLayer(nn.Module):
+    """
+    Small module for building fully-connected networks.
+    """
+
     def __init__(self, linear_args: dict, activation=nn.ReLU, batch_norm=True):
 
         super(FCLayer, self).__init__()
@@ -55,27 +63,27 @@ class FCLayer(nn.Module):
         return x
 
 
-class FrameNet(nn.Module):
+class FrameConvNet(nn.Module):
+    """
+    Generic convolutional network. This will be pre-trained on the constrastive
+    learning task, then trained more once we have labels.
+    """
+
     def __init__(
         self,
         input_channels=3,
         hidden_channels=32,
-        conv_layers=3,
-        fc_size=32,
-        output_size=8,
+        n_conv_layers=3,
     ):
 
-        super(FrameNet, self).__init__()
+        super(FrameConvNet, self).__init__()
 
         self.input_channels = input_channels
         self.hidden_channels = hidden_channels
-        self.conv_layers = conv_layers
-        self.fc_size = fc_size
-        self.output_size = output_size
+        self.n_conv_layers = n_conv_layers
 
         self.conv_layers = nn.ModuleList()
         self.average_pool = nn.AdaptiveAvgPool2d(1)
-        self.fc_layers = nn.ModuleList()
 
         # Add the initial layer.
         self.conv_layers.append(
@@ -93,7 +101,7 @@ class FrameNet(nn.Module):
         )
 
         # Add the remaining convolutional layers.
-        for _ in range(conv_layers - 1):
+        for _ in range(self.n_conv_layers - 1):
 
             self.conv_layers.append(
                 CNNLayer(
@@ -109,23 +117,6 @@ class FrameNet(nn.Module):
                 )
             )
 
-        # Add the FC layers. This sucks.
-        input_sizes = [self.hidden_channels, self.fc_size, self.fc_size]
-        output_sizes = [self.fc_size, self.fc_size, self.output_size]
-        activations = [nn.ReLU, nn.ReLU, nn.Identity]
-        bnorm = [True, True, False]
-
-        for in_size, out_size, act, bn in zip(
-            input_sizes, output_sizes, activations, bnorm
-        ):
-            self.fc_layers.append(
-                FCLayer(
-                    linear_args={"in_features": in_size, "out_features": out_size},
-                    activation=act,
-                    batch_norm=bn,
-                )
-            )
-
     def forward(self, x):
 
         # Run through convolutions
@@ -137,9 +128,56 @@ class FrameNet(nn.Module):
         x = self.average_pool(x)
         x = torch.reshape(x, [x.shape[0], x.shape[1]])
 
-        # Through linear layers
+        return x
 
-        for layer in self.fc_layers:
+    def num_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+class FrameLinearNet(nn.Module):
+    """
+    Small all-FC network designed to sit on top of the conv net. Used either
+    for a projection head for constrastive learning, or for getting class probabilities
+    for the final model.
+    """
+
+    def __init__(
+        self,
+        n_layers: int = 3,
+        input_size: int = 32,
+        hidden_size: int = 32,
+        output_size: int = 8,
+    ):
+
+        super(FrameLinearNet, self).__init__()
+
+        self.n_layers = n_layers
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+
+        self.layers = nn.ModuleList()
+
+        # Add the FC layers. This sucks.
+        input_sizes = [self.input_size] + [self.hidden_size] * (self.n_layers - 1)
+        output_sizes = [self.hidden_size] * (self.n_layers - 1) + [self.output_size]
+        activations = [nn.ReLU] * (self.n_layers - 1) + [nn.Identity]
+        bnorm = [True] * (self.n_layers - 1) + [False]
+
+        for in_size, out_size, act, bn in zip(
+            input_sizes, output_sizes, activations, bnorm
+        ):
+            self.layers.append(
+                FCLayer(
+                    linear_args={"in_features": in_size, "out_features": out_size},
+                    activation=act,
+                    batch_norm=bn,
+                )
+            )
+
+    def forward(self, x):
+
+        for layer in self.layers:
 
             x = layer(x)
 
@@ -151,11 +189,4 @@ class FrameNet(nn.Module):
 
 if __name__ == "__main__":
 
-    net = FrameNet()
-
-    # Simulate a batch of images.
-    batch = torch.randn([32, 3, 144, 256])
-
-    output = net(batch)
-
-    print(output.shape)
+    pass

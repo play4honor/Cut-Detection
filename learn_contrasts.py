@@ -1,4 +1,4 @@
-from frameID.net import FrameNet
+from frameID.net import FrameConvNet, FrameLinearNet
 from frameID.data import ContrastiveFrameDataset
 from frameID.metrics import ContrastiveLoss
 
@@ -8,6 +8,8 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 import logging
+import os
+from itertools import chain
 
 logging.basicConfig(
     level="INFO",
@@ -19,8 +21,12 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 logging.info(f"Using {device}")
 NUM_WORKERS = 0
 
-# Model Design
-HIDDEN_CHANNELS = 32
+# Conv Net Design
+CONV_LAYERS = 3
+CONV_HIDDEN_CHANNELS = 32
+
+# Projection Head Design
+LINEAR_LAYERS = 3
 LINEAR_SIZE = 32
 OUTPUT_SIZE = 8
 
@@ -29,6 +35,9 @@ BATCH_SIZE = 32
 EPOCHS = 2
 WRITE_EVERY_N = 50
 OPTIMIZER = "AdamW"
+
+MODEL_DIR = "./models"
+MODEL_NAME = "init_model"
 
 # Setup optimizer, transforms for images.
 
@@ -50,19 +59,28 @@ train_loader = DataLoader(
 )
 logging.info(f"Batches: {len(train_loader)}")
 
-# Setup network
+# Setup networks
 
-net = FrameNet(
-    hidden_channels=HIDDEN_CHANNELS,
-    conv_layers=3,
-    fc_size=LINEAR_SIZE,
+conv_net = FrameConvNet(hidden_channels=CONV_HIDDEN_CHANNELS, n_conv_layers=CONV_LAYERS)
+linear_net = FrameLinearNet(
+    n_layers=LINEAR_LAYERS,
+    input_size=CONV_HIDDEN_CHANNELS,
+    hidden_size=LINEAR_SIZE,
     output_size=OUTPUT_SIZE,
 )
 
-net.to(device)
-logging.info(f"Network Weights: {net.num_params()}")
+conv_net.to(device)
+linear_net.to(device)
+logging.info(f"Convolutional Network Weights: {conv_net.num_params()}")
+logging.info(f"Projection Head Weights: {linear_net.num_params()}")
 
-optimizer = opt_class(filter(lambda p: p.requires_grad, net.parameters()))
+# We want the optimizer to optimize both networks.
+optimizer = opt_class(
+    chain(
+        filter(lambda p: p.requires_grad, conv_net.parameters()),
+        filter(lambda p: p.requires_grad, linear_net.parameters()),
+    )
+)
 criterion = ContrastiveLoss(batch_size=BATCH_SIZE).to(device)
 
 for epoch in range(EPOCHS):
@@ -76,8 +94,10 @@ for epoch in range(EPOCHS):
 
         optimizer.zero_grad()
 
+        # Concatenate the two transformations together, then send through both networks.
         x = torch.cat((data["x_t1"], data["x_t2"]), dim=0).to(device)
-        res = net(x)
+        intermediate = conv_net(x)
+        res = linear_net(intermediate)
 
         loss, _, _ = criterion(res)
 
@@ -94,3 +114,12 @@ for epoch in range(EPOCHS):
             )
             accum_loss = 0.0
             n_obs = 0.0
+
+# We don't have any fancy way to save checkpoints, or stop early or anything.
+
+# Create the output path if necessary.
+if not os.path.isdir(MODEL_DIR):
+    os.mkdir(MODEL_DIR)
+
+torch.save(conv_net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_conv.pt")
+torch.save(linear_net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_linear.pt")

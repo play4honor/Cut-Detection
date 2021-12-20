@@ -5,4 +5,5 @@ video/
 *.jpg
 *.mp4
 data/
+models/
 frameID/__pycache__/

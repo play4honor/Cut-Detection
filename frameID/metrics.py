@@ -6,6 +6,10 @@ BIG_NUMBER = 1e9
 
 
 class ContrastiveLoss(nn.Module):
+    """
+    Based on implementation here: https://github.com/google-research/simclr/blob/master/tf2/objective.py
+    """
+
     def __init__(self, batch_size: int = 32, h_norm=True, temperature=1.0):
 
         super(ContrastiveLoss, self).__init__()

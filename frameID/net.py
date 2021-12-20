@@ -2,14 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class CNNLayer(nn.Module):
 
+class CNNLayer(nn.Module):
     def __init__(
-        self,
-        conv_args:dict,
-        max_pool_args:dict,
-        activation=nn.ReLU,
-        batch_norm=True):
+        self, conv_args: dict, max_pool_args: dict, activation=nn.ReLU, batch_norm=True
+    ):
 
         super(CNNLayer, self).__init__()
 
@@ -33,13 +30,9 @@ class CNNLayer(nn.Module):
 
         return x
 
-class FCLayer(nn.Module):
 
-    def __init__(
-        self,
-        linear_args:dict,
-        activation=nn.ReLU,
-        batch_norm=True):
+class FCLayer(nn.Module):
+    def __init__(self, linear_args: dict, activation=nn.ReLU, batch_norm=True):
 
         super(FCLayer, self).__init__()
 
@@ -61,8 +54,8 @@ class FCLayer(nn.Module):
 
         return x
 
-class FrameNet(nn.Module):
 
+class FrameNet(nn.Module):
     def __init__(
         self,
         input_channels=3,
@@ -91,16 +84,16 @@ class FrameNet(nn.Module):
                     "in_channels": self.input_channels,
                     "out_channels": self.hidden_channels,
                     "kernel_size": 3,
-                    "padding": 1
+                    "padding": 1,
                 },
                 max_pool_args={"kernel_size": 3},
                 activation=nn.ReLU,
-                batch_norm=True
+                batch_norm=True,
             )
         )
 
         # Add the remaining convolutional layers.
-        for _ in range(conv_layers-1):
+        for _ in range(conv_layers - 1):
 
             self.conv_layers.append(
                 CNNLayer(
@@ -108,11 +101,11 @@ class FrameNet(nn.Module):
                         "in_channels": self.hidden_channels,
                         "out_channels": self.hidden_channels,
                         "kernel_size": 3,
-                        "padding": 1
+                        "padding": 1,
                     },
                     max_pool_args={"kernel_size": 3},
                     activation=nn.ReLU,
-                    batch_norm=True
+                    batch_norm=True,
                 )
             )
 
@@ -122,15 +115,14 @@ class FrameNet(nn.Module):
         activations = [nn.ReLU, nn.ReLU, nn.Identity]
         bnorm = [True, True, False]
 
-        for in_size, out_size, act, bn in zip(input_sizes, output_sizes, activations, bnorm):
+        for in_size, out_size, act, bn in zip(
+            input_sizes, output_sizes, activations, bnorm
+        ):
             self.fc_layers.append(
                 FCLayer(
-                    linear_args={
-                        "in_features": in_size,
-                        "out_features": out_size
-                    },
+                    linear_args={"in_features": in_size, "out_features": out_size},
                     activation=act,
-                    batch_norm=bn
+                    batch_norm=bn,
                 )
             )
 
@@ -155,6 +147,7 @@ class FrameNet(nn.Module):
 
     def num_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
 
 if __name__ == "__main__":
 

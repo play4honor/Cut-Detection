@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 
 import cv2
 
+
 def open_video(video_path):
 
     cap = cv2.VideoCapture(video_path)
@@ -18,17 +19,28 @@ def open_video(video_path):
 
     return cap, {
         "fps": fps,
-        "length":  length,
+        "length": length,
         "width": width,
-        "height": height, 
+        "height": height,
     }
+
 
 class ContrastiveFrameDataset(Dataset):
     """Dataset class for contrastive learning."""
 
-    IMG_EXT = ('.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', '.webp')
+    IMG_EXT = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".ppm",
+        ".bmp",
+        ".pgm",
+        ".tif",
+        ".tiff",
+        ".webp",
+    )
 
-    def __init__(self, path, trs:transforms.Compose, ext=".jpg", size=None):
+    def __init__(self, path, trs: transforms.Compose, ext=".jpg", size=None):
 
         super(ContrastiveFrameDataset, self).__init__()
 
@@ -46,22 +58,21 @@ class ContrastiveFrameDataset(Dataset):
         if size is not None:
             self.file_list = self.file_list[:size]
 
-
     def _parse_path(self, path):
 
         fileList = []
 
         for r, _, f in os.walk(path):
-            fullpaths = [os.path.join(r, fl) for fl in f]    
+            fullpaths = [os.path.join(r, fl) for fl in f]
             fileList.append(fullpaths)
 
         flatList = [p for paths in fileList for p in paths]
         flatList = [f for f in filter(lambda x: self.ext in x[-5:], flatList)]
-        
+
         return flatList
 
     def __getitem__(self, idx):
-        
+
         p = self.file_list[idx]
         x = read_image(p, self.read_mode)
         # We need this format for stuff.
@@ -91,7 +102,9 @@ if __name__ == "__main__":
         [
             transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1, 1.4)),
             transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
-            transforms.RandomResizedCrop(size=(144, 256), scale=(0.8, 1), ratio=(1.77, 1.78))
+            transforms.RandomResizedCrop(
+                size=(144, 256), scale=(0.8, 1), ratio=(1.77, 1.78)
+            ),
         ]
     )
 

@@ -21,6 +21,8 @@ device = "cuda:0" if torch.cuda.is_available() else "cpu"
 logging.info(f"Using {device}")
 NUM_WORKERS = 0
 
+# TODO Read all this from a config file and save the file with the model.
+
 # Conv Net Design
 CONV_LAYERS = 3
 CONV_HIDDEN_CHANNELS = 32
@@ -45,10 +47,10 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 
 trs = transforms.Compose(
     [
-        transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(1, 1.4)),
+        transforms.RandomAffine(degrees=15, translate=(0.2, 0.2), scale=(1, 1.4)),
         transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4),
         transforms.RandomResizedCrop(
-            size=(144, 256), scale=(0.8, 1), ratio=(1.77, 1.78)
+            size=(144, 256), scale=(0.5, 1), ratio=(1.77, 1.78)
         ),
     ]
 )
@@ -83,6 +85,7 @@ optimizer = opt_class(
 )
 criterion = ContrastiveLoss(batch_size=BATCH_SIZE).to(device)
 
+# Training loop
 for epoch in range(EPOCHS):
 
     logging.info(f"Starting epoch {epoch+1} of {EPOCHS}")
@@ -104,8 +107,8 @@ for epoch in range(EPOCHS):
         loss.backward()
         optimizer.step()
 
-        accum_loss = accum_loss + loss.item()
-        n_obs = x.shape[0]
+        accum_loss += loss.item()
+        n_obs += x.shape[0]
 
         if i % WRITE_EVERY_N == WRITE_EVERY_N - 1:
 

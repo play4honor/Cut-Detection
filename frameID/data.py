@@ -1,5 +1,5 @@
 import os
-import json
+import csv
 
 import torch
 import torchvision.transforms as transforms
@@ -58,7 +58,7 @@ class ContrastiveFrameDataset(Dataset):
 
         # Optionally limit the size of the dataset
         if size is not None:
-            self.file_list = self.file_list[:size]
+            self.file_list = self.file_list[: min(size, len(self.file_list))]
 
     def _parse_path(self, path):
 
@@ -108,9 +108,9 @@ class SupervisedFrameDataset(Dataset):
     )
 
     # This is horrible but whatever.
-    lab_enum = {"A22": 0, "EZ": 1, "B": 2}
+    lab_enum = {"a22": 0, "ez": 1, "b": 2}
 
-    def __init__(self, path, ext=".jpg", size=None, labs_file: str = "labels.json"):
+    def __init__(self, path, labs_file: str, ext=".jpg", size=None):
 
         super(SupervisedFrameDataset, self).__init__()
 
@@ -121,16 +121,25 @@ class SupervisedFrameDataset(Dataset):
         self.path = path
         self.read_mode = ImageReadMode.UNCHANGED
 
+        # Turn the contents of the csv into a tensor. This may be a bad idea.
         with open(f"{self.path}/{labs_file}", "r") as f:
-            labs = json.load(f)
-
-        # Make a dictionary of idx: (image_idx, image_label)
-        self.labels = {
-            idx: (int(item[0]), self.lab_enum[item[1]])
-            for idx, item in enumerate(labs.items())
-        }
+            lab_reader = csv.reader(f, delimiter=",")
+            raw_ranges = [(int(row[0]), row[1]) for row in lab_reader]
+            self.label_ranges = torch.stack(
+                (
+                    torch.tensor([row[0] for row in raw_ranges], dtype=torch.int32),
+                    torch.tensor(
+                        [self.lab_enum[row[1]] for row in raw_ranges], dtype=torch.int32
+                    ),
+                ),
+                dim=0,
+            )
 
         self.file_list = self._parse_path(self.path)
+
+        # Optionally limit the size of the dataset
+        if size is not None:
+            self.file_list = self.file_list[: min(size, len(self.file_list))]
 
     def _parse_path(self, path):
 
@@ -145,31 +154,39 @@ class SupervisedFrameDataset(Dataset):
 
         return flatList
 
+    def _get_label(self, idx):
+
+        pos = torch.searchsorted(self.label_ranges[0, :], idx, right=True).item()
+        return self.label_ranges[1, pos - 1]
+
     def __getitem__(self, idx):
 
-        file_idx, lab = self.labels[idx]
+        label = self._get_label(idx)
 
-        p = self.file_list[file_idx]
+        p = self.file_list[idx]
         x = read_image(p, self.read_mode)
         # We need this format for stuff.
         x = x.float() / 255
 
-        return {"x": x, "y": torch.tensor([lab], dtype=torch.int64)}
+        return {"x": x, "y": label.long()}
 
     def __len__(self):
 
-        return len(self.labels)
+        return len(self.file_list)
 
 
 if __name__ == "__main__":
 
-    from torchvision.utils import save_image, make_grid
     from torch.utils.data import DataLoader
 
-    ds = SupervisedFrameDataset("data/ravens-lions", ext=".jpg")
+    ds = SupervisedFrameDataset(
+        "data/browns-ravens", labs_file="frames.csv", ext=".jpg"
+    )
     print(len(ds))
+    print(ds.file_list[0:10])
+    print(ds.file_list[73412])
 
-    dl = DataLoader(ds, 64)
+    dl = DataLoader(ds, 64, shuffle=True)
 
     batch = next(iter(dl))
 

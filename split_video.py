@@ -7,9 +7,15 @@ import os
 # Set up parser and parse arguments
 parser = argparse.ArgumentParser("Split a video into individual frames.")
 parser.add_argument("input_path", type=str, help="Path to video to turn into frames.")
-parser.add_argument("output_dir", type=str, help="Path to directory to write images. Will be created if it doesn't exist.")
+parser.add_argument(
+    "output_dir",
+    type=str,
+    help="Path to directory to write images. Will be created if it doesn't exist.",
+)
 parser.add_argument("--resize", type=int, default=0, help="Size of larger dimension.")
-parser.add_argument("--max-frames", type=int, default=-1, help="Number of frames to save.")
+parser.add_argument(
+    "--max-frames", type=int, default=-1, help="Number of frames to save."
+)
 
 args = parser.parse_args()
 
@@ -37,8 +43,10 @@ for i in range(frame_limit):
 
     if ret:
         if args.resize > 0:
-            frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LINEAR)
+            frame = cv2.resize(
+                frame, (new_width, new_height), interpolation=cv2.INTER_LINEAR
+            )
 
-        cv2.imwrite(f"{args.output_dir}/frame_{i}.jpg", frame)
+        cv2.imwrite(f"{args.output_dir}/frame_{i:07}.jpg", frame)
 
 print("Done")

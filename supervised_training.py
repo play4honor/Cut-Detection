@@ -2,7 +2,7 @@ from frameID.net import FrameConvNet, FrameLinearNet
 from frameID.data import SupervisedFrameDataset
 
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, ConcatDataset, Subset
 
 import logging
 import os
@@ -42,15 +42,20 @@ MODEL_DIR = "./models"
 MODEL_NAME = "init_model"
 LOAD_CONV_NET = False
 
-# Setup optimizer, transforms for images.
-
+# Setup optimizer.
 opt_class = getattr(torch.optim, OPTIMIZER)
 
-
 # Initialize the dataset class and then split into train/valid.
-ds = SupervisedFrameDataset(
-    "data/browns-ravens", labs_file="frames.csv", ext=".jpg", size=DATA_SIZE
-)
+# 100% should come from a config file.
+data_dirs = ["data/browns-ravens", "data/bears-ravens", "data/ravens-packers"]
+labs_files = ["frames.csv"] * 3
+
+ds_list = [
+    SupervisedFrameDataset(dir, lf, ext=".jpg")
+    for dir, lf in zip(data_dirs, labs_files)
+]
+
+ds = ConcatDataset(ds_list)
 
 idx_perm = torch.randperm(len(ds))
 

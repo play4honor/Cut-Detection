@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import json
+
 
 class CNNLayer(nn.Module):
     """
@@ -185,6 +187,33 @@ class FrameLinearNet(nn.Module):
 
     def num_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+# Function to slightly simplify loading networks and making a single callable.
+def load_and_glue_nets(param_file, conv_file, linear_file):
+
+    with open(param_file, "r") as f:
+        model_params = json.load(f)
+
+    conv_net = FrameConvNet(
+        hidden_channels=model_params["conv_channels"],
+        n_conv_layers=model_params["conv_layers"],
+    )
+    conv_state_dict = torch.load(conv_file, map_location="cpu")
+    conv_net.load_state_dict(conv_state_dict)
+
+    linear_net = FrameLinearNet(
+        n_layers=model_params["linear_layers"],
+        input_size=model_params["conv_channels"],
+        hidden_size=model_params["linear_size"],
+        output_size=model_params["linear_output_size"],
+    )
+    linear_state_dict = torch.load(linear_file, map_location="cpu")
+    linear_net.load_state_dict(linear_state_dict)
+
+    net = nn.Sequential(conv_net, linear_net)
+
+    return net, model_params
 
 
 if __name__ == "__main__":

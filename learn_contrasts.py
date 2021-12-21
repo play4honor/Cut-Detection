@@ -19,7 +19,7 @@ logging.basicConfig(
 # Resourcing
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 logging.info(f"Using {device}")
-NUM_WORKERS = 0
+NUM_WORKERS = 3
 
 # TODO Read all this from a config file and save the file with the model.
 
@@ -34,7 +34,7 @@ OUTPUT_SIZE = 8
 
 # Training Details
 BATCH_SIZE = 32
-EPOCHS = 2
+EPOCHS = 3
 WRITE_EVERY_N = 50
 OPTIMIZER = "AdamW"
 
@@ -61,68 +61,72 @@ train_loader = DataLoader(
 )
 logging.info(f"Batches: {len(train_loader)}")
 
-# Setup networks
+if __name__ == "__main__":
 
-conv_net = FrameConvNet(hidden_channels=CONV_HIDDEN_CHANNELS, n_conv_layers=CONV_LAYERS)
-linear_net = FrameLinearNet(
-    n_layers=LINEAR_LAYERS,
-    input_size=CONV_HIDDEN_CHANNELS,
-    hidden_size=LINEAR_SIZE,
-    output_size=OUTPUT_SIZE,
-)
+    # Setup networks
 
-conv_net.to(device)
-linear_net.to(device)
-logging.info(f"Convolutional Network Weights: {conv_net.num_params()}")
-logging.info(f"Projection Head Weights: {linear_net.num_params()}")
-
-# We want the optimizer to optimize both networks.
-optimizer = opt_class(
-    chain(
-        filter(lambda p: p.requires_grad, conv_net.parameters()),
-        filter(lambda p: p.requires_grad, linear_net.parameters()),
+    conv_net = FrameConvNet(
+        hidden_channels=CONV_HIDDEN_CHANNELS, n_conv_layers=CONV_LAYERS
     )
-)
-criterion = ContrastiveLoss(batch_size=BATCH_SIZE).to(device)
+    linear_net = FrameLinearNet(
+        n_layers=LINEAR_LAYERS,
+        input_size=CONV_HIDDEN_CHANNELS,
+        hidden_size=LINEAR_SIZE,
+        output_size=OUTPUT_SIZE,
+    )
 
-# Training loop
-for epoch in range(EPOCHS):
+    conv_net.to(device)
+    linear_net.to(device)
+    logging.info(f"Convolutional Network Weights: {conv_net.num_params()}")
+    logging.info(f"Projection Head Weights: {linear_net.num_params()}")
 
-    logging.info(f"Starting epoch {epoch+1} of {EPOCHS}")
+    # We want the optimizer to optimize both networks.
+    optimizer = opt_class(
+        chain(
+            filter(lambda p: p.requires_grad, conv_net.parameters()),
+            filter(lambda p: p.requires_grad, linear_net.parameters()),
+        )
+    )
+    criterion = ContrastiveLoss(batch_size=BATCH_SIZE).to(device)
 
-    accum_loss = 0.0
-    n_obs = 0
+    # Training loop
+    for epoch in range(EPOCHS):
 
-    for i, data in enumerate(train_loader):
+        logging.info(f"Starting epoch {epoch+1} of {EPOCHS}")
 
-        optimizer.zero_grad()
+        accum_loss = 0.0
+        n_obs = 0
 
-        # Concatenate the two transformations together, then send through both networks.
-        x = torch.cat((data["x_t1"], data["x_t2"]), dim=0).to(device)
-        intermediate = conv_net(x)
-        res = linear_net(intermediate)
+        for i, data in enumerate(train_loader):
 
-        loss, _, _ = criterion(res)
+            optimizer.zero_grad()
 
-        loss.backward()
-        optimizer.step()
+            # Concatenate the two transformations together, then send through both networks.
+            x = torch.cat((data["x_t1"], data["x_t2"]), dim=0).to(device)
+            intermediate = conv_net(x)
+            res = linear_net(intermediate)
 
-        accum_loss += loss.item()
-        n_obs += x.shape[0]
+            loss, _, _ = criterion(res)
 
-        if i % WRITE_EVERY_N == WRITE_EVERY_N - 1:
+            loss.backward()
+            optimizer.step()
 
-            logging.info(
-                f"Epoch {epoch+1} | Batch {i+1} | Loss: {accum_loss / n_obs :.3f}"
-            )
-            accum_loss = 0.0
-            n_obs = 0.0
+            accum_loss += loss.item()
+            n_obs += x.shape[0]
 
-# We don't have any fancy way to save checkpoints, or stop early or anything.
+            if i % WRITE_EVERY_N == WRITE_EVERY_N - 1:
 
-# Create the output path if necessary.
-if not os.path.isdir(MODEL_DIR):
-    os.mkdir(MODEL_DIR)
+                logging.info(
+                    f"Epoch {epoch+1} | Batch {i+1} | Loss: {accum_loss / n_obs :.3f}"
+                )
+                accum_loss = 0.0
+                n_obs = 0.0
 
-torch.save(conv_net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_conv.pt")
-torch.save(linear_net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_linear.pt")
+    # We don't have any fancy way to save checkpoints, or stop early or anything.
+
+    # Create the output path if necessary.
+    if not os.path.isdir(MODEL_DIR):
+        os.mkdir(MODEL_DIR)
+
+    torch.save(conv_net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_conv.pt")
+    torch.save(linear_net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_linear.pt")

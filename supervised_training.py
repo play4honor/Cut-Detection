@@ -47,7 +47,7 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 
 # Initialize the dataset class and then split into train/valid.
 # 100% should come from a config file.
-data_dirs = ["data/browns-ravens", "data/bears-ravens", "data/ravens-packers"]
+data_dirs = ["data/browns-ravens", "data/bears-ravens", "data/ravens-browns"]
 labs_files = ["frames.csv"] * 3
 
 ds_list = [

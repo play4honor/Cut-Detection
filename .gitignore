@@ -4,6 +4,9 @@ video/
 *.png
 *.jpg
 *.mp4
+*.csv
+*.json
 data/
 models/
 frameID/__pycache__/
+cpp/

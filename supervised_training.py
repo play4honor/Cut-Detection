@@ -24,7 +24,8 @@ NUM_WORKERS = 3
 
 # Conv Net Design
 CONV_LAYERS = 3
-CONV_HIDDEN_CHANNELS = 32
+CONV_HIDDEN_CHANNELS = 48
+AVG_POOL_SIZE = 4
 
 # Output Network Design
 LINEAR_LAYERS = 2
@@ -34,8 +35,8 @@ OUTPUT_SIZE = 3
 # Training Details
 DATA_SIZE = 150_000
 BATCH_SIZE = 128
-EPOCHS = 2
-WRITE_EVERY_N = 100
+EPOCHS = 5
+WRITE_EVERY_N = 500
 OPTIMIZER = "AdamW"
 
 MODEL_DIR = "./models"
@@ -47,8 +48,14 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 
 # Initialize the dataset class and then split into train/valid.
 # 100% should come from a config file.
-data_dirs = ["data/browns-ravens", "data/bears-ravens", "data/ravens-browns"]
-labs_files = ["frames.csv"] * 3
+data_dirs = [
+    "data/browns-ravens",
+    "data/bears-ravens",
+    "data/dolphins-ravens",
+    "data/ravens-browns",
+    "data/ravens-bengals",
+]
+labs_files = ["frames.csv"] * len(data_dirs)
 
 ds_list = [
     SupervisedFrameDataset(dir, lf, ext=".jpg")
@@ -87,7 +94,9 @@ logging.info(
 if __name__ == "__main__":
 
     conv_net = FrameConvNet(
-        hidden_channels=CONV_HIDDEN_CHANNELS, n_conv_layers=CONV_LAYERS
+        hidden_channels=CONV_HIDDEN_CHANNELS,
+        n_conv_layers=CONV_LAYERS,
+        average_pool_size=AVG_POOL_SIZE,
     )
 
     if LOAD_CONV_NET:
@@ -99,7 +108,7 @@ if __name__ == "__main__":
 
     linear_net = FrameLinearNet(
         n_layers=LINEAR_LAYERS,
-        input_size=CONV_HIDDEN_CHANNELS,
+        input_size=CONV_HIDDEN_CHANNELS * (AVG_POOL_SIZE ** 2),
         hidden_size=LINEAR_SIZE,
         output_size=OUTPUT_SIZE,
     )
@@ -219,6 +228,7 @@ if __name__ == "__main__":
                 # Convolutional params
                 "conv_layers": CONV_LAYERS,
                 "conv_channels": CONV_HIDDEN_CHANNELS,
+                "avg_pool_size": AVG_POOL_SIZE,
                 # Linear params
                 "linear_layers": LINEAR_LAYERS,
                 "linear_size": LINEAR_SIZE,

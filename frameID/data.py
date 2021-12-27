@@ -1,11 +1,12 @@
 import os
 import csv
+from typing import Iterable
 
 import torch
 import torchvision.transforms as transforms
 from torchvision.io import ImageReadMode, read_image
 
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset
 
 import cv2
 
@@ -173,6 +174,54 @@ class SupervisedFrameDataset(Dataset):
     def __len__(self):
 
         return len(self.file_list)
+
+
+class VideoDataset(IterableDataset):
+    def __init__(self, file_path, resize=None):
+
+        super().__init__()
+
+        self.cap, self.video_info = open_video(file_path)
+
+        # Calculate the correct dimensions
+        if resize is not None:
+
+            self.new_width = resize
+            self.new_height = int(
+                self.video_info["height"] * (self.new_width / self.video_info["width"])
+            )
+        else:
+
+            self.new_width = None
+            self.new_height = None
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        ret, frame = self.cap.read()
+
+        if not ret:
+            raise StopIteration
+
+        if self.new_width is not None:
+
+            frame = cv2.resize(
+                frame, (self.new_width, self.new_height), interpolation=cv2.INTER_LINEAR
+            )
+
+        # openCV and torch don't remotely represent images the same way.
+        frame = (
+            torch.flip(torch.tensor(frame, dtype=torch.float).permute(2, 0, 1), (0,))
+            / 255
+        )
+
+        return frame
+
+    def __len__(self):
+        """Note iterables don't necessarily have len, but this one does."""
+        return self.video_info["length"]
 
 
 if __name__ == "__main__":

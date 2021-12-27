@@ -1,6 +1,5 @@
 import os
 import csv
-from typing import Iterable
 
 import torch
 import torchvision.transforms as transforms

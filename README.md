@@ -1,7 +1,10 @@
-#### Segment NFL game film into All-22/Endzone footage.
+### Segment NFL game film into All-22/Endzone footage.
 
-This still won't work, for reference. The model needs to be somewhere useful.
-
-Target usage:
+Example usage:
 
 `python segment_video.py "video/2021.12.05_Steelers_Ravens.mp4" "steelers-ravens-segments.csv"`
+
+#### Organization
+
+ - `training_scripts` contains scripts related to preparing data and training a model.
+ - `frameID` contains all the code loaded by the scripts, as well as a pre-trained model.

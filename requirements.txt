@@ -1,10 +1,5 @@
 opencv-python
-<<<<<<< HEAD
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torch===1.9.1+cu102 
 --find-links https://download.pytorch.org/whl/torch_stable.html
 torchvision===0.10.1+cu102 
-=======
-scipy
-torch=1.10.1
->>>>>>> (WIP) things for a docker container

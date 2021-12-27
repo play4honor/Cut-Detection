@@ -4,6 +4,7 @@ import torch
 
 import csv
 
+# We need these to produce nice output, but that's all.
 _TYPE_MAP = SupervisedFrameDataset.lab_enum
 _INVERSE_TYPE_MAP = {v: k for k, v in _TYPE_MAP.items()}
 
@@ -23,6 +24,14 @@ def _make_mask(tensor, idx):
 
 
 class Segmentation:
+    """
+    This class's job is to take a series of per-frame scores and turn it into
+    segments. That is, to essentially run-length encode it. Then, because of
+    how the videos work, we can easily identify errors, and the class includes
+    a method that (hopefully) corrects errors, although in a pretty generic and
+    dumb way.
+    """
+
     def __init__(self, scores):
 
         highest_scores, predicted_classes = torch.max(scores, dim=1)
@@ -59,15 +68,20 @@ class Segmentation:
 
     def _update_neighbor(self, orphan_idx, neighbor_idx):
 
+        # Update the neighbor's start or end frame, depending on which side it's on.
         if orphan_idx < neighbor_idx:
             self.te["start_frames"][neighbor_idx] = self.te["start_frames"][orphan_idx]
         else:
             self.te["end_frames"][neighbor_idx] = self.te["end_frames"][orphan_idx]
 
+        # Update the score mean for the neighbor, using weighted average. This is a
+        # general measure of confidence for each interval.
         self.te["score_means"][neighbor_idx] = (
             self.te["score_means"][neighbor_idx] * self.te["run_lengths"][neighbor_idx]
             + self.te["score_means"][orphan_idx] * self.te["run_lengths"][orphan_idx]
         ) / self.te["run_lengths"][neighbor_idx] + self.te["run_lengths"][orphan_idx]
+
+        # Update the run length for the neighbor.
         self.te["run_lengths"][neighbor_idx] = (
             self.te["end_frames"][neighbor_idx]
             - self.te["start_frames"][neighbor_idx]
@@ -83,6 +97,7 @@ class Segmentation:
             blank_threshold,
         )
 
+        # Iterate until there are no more orphans.
         while orphan_mask.sum() > 0:
 
             orphan_idx = torch.arange(self.te["end_frames"].shape[0])[orphan_mask]
@@ -151,6 +166,7 @@ class Segmentation:
                 )
 
     def write_csv(self, file_path):
+        """Write the segments into a nice format."""
 
         rows = [
             (sf.item(), _INVERSE_TYPE_MAP[tp.item()])

@@ -11,6 +11,10 @@ import cv2
 
 
 def open_video(video_path):
+    """
+    Simple function to open a video with opencv and get some information in
+    actually usable form.
+    """
 
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -94,6 +98,7 @@ class ContrastiveFrameDataset(Dataset):
 
 
 class SupervisedFrameDataset(Dataset):
+    """Dataset class for basic classification task."""
 
     IMG_EXT = (
         ".jpg",
@@ -155,6 +160,7 @@ class SupervisedFrameDataset(Dataset):
         return flatList
 
     def _get_label(self, idx):
+        """Gets a label for a given frame number."""
 
         pos = torch.searchsorted(self.label_ranges[0, :], idx, right=True).item()
         return self.label_ranges[1, pos - 1]
@@ -176,6 +182,11 @@ class SupervisedFrameDataset(Dataset):
 
 
 class VideoDataset(IterableDataset):
+    """
+    Dataset class for reading frames directly from video. Intended to be used
+    to provide data to a trained model.
+    """
+
     def __init__(self, file_path, resize=None):
 
         super().__init__()

@@ -1,9 +1,8 @@
 from frameID.net import load_default_net
-from frameID.data import VideoDataset, SupervisedFrameDataset
+from frameID.data import VideoDataset
 from frameID.segmentation import Segmentation
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import argparse

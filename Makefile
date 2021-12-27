@@ -15,4 +15,4 @@ pull:
 	docker pull $(IMAGE_TAG):$(VERSION)
 
 cut-video: pull
-	docker run -v $(OUTPUT_LOC):./output $(IMAGE_TAG):$(VERSION) $(VIDEO)
+	docker run -v $(OUTPUT_LOC):./output $(IMAGE_TAG):$(VERSION) $(TAPE)

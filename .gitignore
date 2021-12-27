@@ -10,3 +10,4 @@ data/
 models/
 frameID/__pycache__/
 cpp/
+!frameID/prod_net/*.json

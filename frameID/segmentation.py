@@ -91,7 +91,7 @@ class Segmentation:
             if target_idx == 0:
 
                 next_idx = target_idx + 1
-                self.update_neighbor(target_idx, next_idx)
+                self._update_neighbor(target_idx, next_idx)
 
                 r_mask = _make_mask(self.te["start_frames"], target_idx.item())
                 self._mask_tensors(r_mask)
@@ -107,7 +107,7 @@ class Segmentation:
             elif target_idx == self.te["start_frames"].shape[0]:
 
                 previous_idx = target_idx - 1
-                self.update_neighbor(target_idx, previous_idx)
+                self._update_neighbor(target_idx, previous_idx)
 
                 r_mask = _make_mask(self.te["start_frames"], target_idx.item())
                 self._mask_tensors(r_mask)

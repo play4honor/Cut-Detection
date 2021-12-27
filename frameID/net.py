@@ -3,6 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import json
+import os
+
+package_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 class CNNLayer(nn.Module):
@@ -212,6 +215,22 @@ def load_and_glue_nets(param_file, conv_file, linear_file):
     net = nn.Sequential(conv_net, linear_net)
 
     return net, model_params
+
+
+# Load a specific network that's included in the module.
+def load_default_net():
+
+    conv_file = os.path.join(
+        package_directory, "prod_net", "init_model_classifier_conv.pt"
+    )
+    linear_file = os.path.join(
+        package_directory, "prod_net", "init_model_classifier_linear.pt"
+    )
+    params_file = os.path.join(
+        package_directory, "prod_net", "init_model_model_params.json"
+    )
+
+    return load_and_glue_nets(params_file, conv_file, linear_file)
 
 
 if __name__ == "__main__":

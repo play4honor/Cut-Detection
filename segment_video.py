@@ -1,4 +1,4 @@
-from frameID.net import load_and_glue_nets
+from frameID.net import load_default_net
 from frameID.data import VideoDataset, SupervisedFrameDataset
 from frameID.segmentation import Segmentation
 
@@ -56,14 +56,12 @@ args = parser.parse_args()
 ds = VideoDataset(args.input_path, resize=256)
 dl = DataLoader(ds, args.batch_size)
 
-net, params = load_and_glue_nets(
-    f"{MODEL_DIR}/{MODEL_NAME}_model_params.json",
-    f"{MODEL_DIR}/{MODEL_NAME}_classifier_conv.pt",
-    f"{MODEL_DIR}/{MODEL_NAME}_classifier_linear.pt",
-)
+net, params = load_default_net()
 
 net.eval()
 net.to(device)
+
+logging.info("Loaded default classifier.")
 
 with torch.no_grad():
 

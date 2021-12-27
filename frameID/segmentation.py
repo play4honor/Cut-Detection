@@ -59,7 +59,11 @@ class Segmentation:
 
     def _update_neighbor(self, orphan_idx, neighbor_idx):
 
-        self.te["start_frames"][neighbor_idx] = 0
+        if orphan_idx < neighbor_idx:
+            self.te["start_frames"][neighbor_idx] = self.te["start_frames"][orphan_idx]
+        else:
+            self.te["end_frames"][neighbor_idx] = self.te["end_frames"][orphan_idx]
+
         self.te["score_means"][neighbor_idx] = (
             self.te["score_means"][neighbor_idx] * self.te["run_lengths"][neighbor_idx]
             + self.te["score_means"][orphan_idx] * self.te["run_lengths"][orphan_idx]

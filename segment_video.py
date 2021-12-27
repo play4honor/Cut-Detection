@@ -9,17 +9,11 @@ from torch.utils.data import DataLoader
 import argparse
 import logging
 
-MODEL_DIR = "./models"
-MODEL_NAME = "init_model"
-
-# Logging and cuda
+# Logging setup
 logging.basicConfig(
     level="INFO",
     format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
 )
-
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
-logging.info(f"Using {device}")
 
 # Set up parser and parse arguments
 parser = argparse.ArgumentParser("Segment a video into scenes.")
@@ -50,8 +44,17 @@ parser.add_argument(
     default=50,
     help="Log message every n batches. 0 to disable.",
 )
+parser.add_argument(
+    "--cpu", action="store_true", help="Don't use cuda even if it's available."
+)
+
+
+# Start doing stuff here. Probably should be main()
 
 args = parser.parse_args()
+
+device = "cuda:0" if torch.cuda.is_available() and not args.cpu else "cpu"
+logging.info(f"Using {device}")
 
 ds = VideoDataset(args.input_path, resize=256)
 dl = DataLoader(ds, args.batch_size)

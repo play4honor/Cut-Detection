@@ -1,5 +1,7 @@
-#### Find cuts
+#### Segment NFL game film into All-22/Endzone footage.
 
-Example usage:
+This still won't work, for reference. The model needs to be somewhere useful.
 
-`python cutfinder.py video/v.mp4 v_cuts.txt`
+Target usage:
+
+`python segment_video.py "video/2021.12.05_Steelers_Ravens.mp4" "steelers-ravens-segments.csv"`

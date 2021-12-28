@@ -1,14 +1,17 @@
 OUTPUT_LOC ?= ./output
 
-IMAGE_TAG = play4honor/cut-detector
+IMAGE_TAG = public.ecr.aws/o4s5x0l8/cut-detector
 VERSION = latest
 
-.PHONY: build push pull cut-video
+.PHONY: build ecr-login push pull cut-video
+
+ecr-login: 
+	aws ecr-public get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin public.ecr.aws/o4s5x0l8
 
 build: Dockerfile
 	docker build -t $(IMAGE_TAG):$(VERSION) -f Dockerfile .
 
-push:
+push: ecr-login
 	docker push $(IMAGE_TAG):$(VERSION)
 
 pull:

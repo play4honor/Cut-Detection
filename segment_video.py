@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import argparse
 import logging
+import os
 
 # Logging setup
 logging.basicConfig(
@@ -44,6 +45,12 @@ parser.add_argument(
     help="Log message every n batches. 0 to disable.",
 )
 parser.add_argument(
+    "--frame-limit",
+    type=int,
+    default=None,
+    help="Limit how many frames are processed. Mainly for testing.",
+)
+parser.add_argument(
     "--cpu", action="store_true", help="Don't use cuda even if it's available."
 )
 
@@ -51,6 +58,9 @@ parser.add_argument(
 # Start doing stuff here. Probably should be main()
 
 args = parser.parse_args()
+
+if not os.path.isfile(args.input_path):
+    raise ValueError(f"{args.input_path} does not exist.")
 
 device = "cuda:0" if torch.cuda.is_available() and not args.cpu else "cpu"
 logging.info(f"Using {device}")
@@ -78,12 +88,23 @@ with torch.no_grad():
             if i % args.print_every == args.print_every - 1:
                 logging.info(f"Scored batch {i+1} ({(i+1) * args.batch_size} frames).")
 
+        # This may get removed.
+        if (
+            args.frame_limit is not None
+            and (i + 1) * args.batch_size > args.frame_limit
+        ):
+            break
+
     yy = torch.cat(yy, 0).to("cpu")
 
     seg = Segmentation(yy)
     logging.info(f"Found {len(seg)} initial segments")
     seg.glue_orphans(args.base_threshold, args.blank_threshold)
-    logging.info(f"Revised to {len(seg)} segments.")
+    logging.info(f"Revised to {len(seg)} segments through orphan combination.")
+    seg.combine_adjacent_segments()
+    logging.info(
+        f"Revised to {len(seg)} segments through matching adjacent combination."
+    )
 
     logging.info(f"Writing {len(seg)} segments to {args.output_path}")
     seg.write_csv(args.output_path)

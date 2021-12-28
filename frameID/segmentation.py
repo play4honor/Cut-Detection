@@ -123,7 +123,7 @@ class Segmentation:
                 )
 
             # If it's the last element
-            elif target_idx == self.te["start_frames"].shape[0]:
+            elif target_idx == self.te["start_frames"].shape[0] - 1:
 
                 previous_idx = target_idx - 1
                 self._update_neighbor(target_idx, previous_idx)
@@ -164,6 +164,23 @@ class Segmentation:
                     real_threshold,
                     blank_threshold,
                 )
+
+    def combine_adjacent_segments(self):
+        """Combine adjacent segments of the same type."""
+
+        matches_following = self.te["frame_types"][1:] == self.te["frame_types"][:-1]
+
+        while matches_following.sum() > 0:
+
+            match_idx = torch.where(matches_following)[0][0]
+            next_idx = match_idx + 1
+            self._update_neighbor(match_idx, next_idx)
+            r_mask = _make_mask(self.te["start_frames"], [match_idx.item()])
+            self._mask_tensors(r_mask)
+
+            matches_following = (
+                self.te["frame_types"][1:] == self.te["frame_types"][:-1]
+            )
 
     def write_csv(self, file_path):
         """Write the segments into a nice format."""

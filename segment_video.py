@@ -21,6 +21,7 @@ parser.add_argument("input_path", type=str, help="Path to video to segment.")
 parser.add_argument(
     "output_path",
     type=str,
+    default=None,
     help="Path to output csv",
 )
 parser.add_argument(
@@ -106,5 +107,10 @@ with torch.no_grad():
         f"Revised to {len(seg)} segments through matching adjacent combination."
     )
 
-    logging.info(f"Writing {len(seg)} segments to {args.output_path}")
-    seg.write_csv(args.output_path)
+    if args.output_path is None:
+        out_path = os.path.splitext(args.input_path)[0] + "_frames.csv"
+    else:
+        out_path = args.output_path
+
+    logging.info(f"Writing {len(seg)} segments to {out_path}")
+    seg.write_csv(out_path)

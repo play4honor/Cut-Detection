@@ -12,3 +12,4 @@ frameID/__pycache__/
 cpp/
 !frameID/prod_net/*.json
 frameID.egg-info/
+!requirements.txt

@@ -9,7 +9,8 @@ RUN apt-get update &&  \
       make                  \
       python3               \
       python3-pip           \
-      python3-setuptools && \
+      python3-setuptools    \
+      python3-opencv     && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get -y autoremove
 

@@ -1,4 +1,5 @@
 FROM nvidia/cuda:10.2-base-ubuntu18.04
+ENV DEBIAN_FRONTEND=noninteractive
 
 COPY ./requirements.txt ./
 

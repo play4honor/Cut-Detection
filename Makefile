@@ -1,6 +1,6 @@
 OUTPUT_LOC ?= ./output
 
-IMAGE_TAG = public.ecr.aws/o4s5x0l8/cut-detector
+IMAGE_TAG = public.ecr.aws/o4s5x0l8/cut-detection
 VERSION = latest
 
 .PHONY: build ecr-login push pull cut-video
@@ -18,4 +18,4 @@ pull:
 	docker pull $(IMAGE_TAG):$(VERSION)
 
 cut-video: pull
-	docker run -v $(OUTPUT_LOC):./output $(IMAGE_TAG):$(VERSION) $(TAPE)
+	docker run -v $(OUTPUT_LOC):./sources $(IMAGE_TAG):$(VERSION) $(TAPE)

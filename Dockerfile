@@ -19,15 +19,15 @@ ENV LC_CTYPE="en_US.UTF-8"
 RUN pip3 install --upgrade pip && \
     pip3 install -r requirements.txt
 
+WORKDIR /home
+
 COPY ./segment_video.py \
      ./setup.py \
      ./frameID/ \
-     ./
-
-WORKDIR /
+     /home/
 
 RUN pip3 install -e .
 
-RUN mkdir -p /sources
+RUN mkdir sources
 
 ENTRYPOINT ["python", "segment_video.py"]

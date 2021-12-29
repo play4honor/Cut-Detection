@@ -19,7 +19,7 @@ logging.basicConfig(
 parser = argparse.ArgumentParser("Segment a video into scenes.")
 parser.add_argument("input_path", type=str, help="Path to video to segment.")
 parser.add_argument(
-    "output_path",
+    "--output_path",
     type=str,
     default=None,
     help="Path to output csv",

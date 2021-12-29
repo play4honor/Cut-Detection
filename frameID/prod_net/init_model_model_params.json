@@ -1,1 +1,1 @@
-{"conv_layers": 3, "conv_channels": 48, "avg_pool_size": 4, "linear_layers": 2, "linear_size": 32, "linear_output_size": 3, "data_size": 150000, "batch_size": 128, "epochs": 5}
+{"conv_layers": 3, "conv_channels": 48, "avg_pool_size": 4, "linear_layers": 2, "linear_size": 32, "linear_output_size": 3, "data_size": 150000, "batch_size": 128, "epochs": 3}

@@ -1,2 +1,15 @@
 video/
 *.ipynb
+*.txt
+*.png
+*.jpg
+*.mp4
+*.csv
+*.json
+data/
+models/
+frameID/__pycache__/
+cpp/
+!frameID/prod_net/*.json
+frameID.egg-info/
+!requirements.txt

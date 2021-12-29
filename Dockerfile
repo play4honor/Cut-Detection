@@ -30,4 +30,4 @@ RUN pip3 install -e .
 
 RUN mkdir sources
 
-ENTRYPOINT ["python", "segment_video.py"]
+ENTRYPOINT ["python3", "segment_video.py"]

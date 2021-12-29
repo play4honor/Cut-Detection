@@ -6,7 +6,7 @@ VERSION = latest
 .PHONY: build ecr-login push pull cut-video
 
 ecr-login: 
-	aws ecr-public get-login-password --region us-east-1 | sudo docker login --username AWS --password-stdin public.ecr.aws/o4s5x0l8
+	aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/o4s5x0l8
 
 build: Dockerfile
 	docker build -t $(IMAGE_TAG):$(VERSION) -f Dockerfile .

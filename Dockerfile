@@ -21,9 +21,10 @@ RUN pip3 install --upgrade pip && \
 
 WORKDIR /home
 
+COPY ./frameID/ /home/frameID
+
 COPY ./segment_video.py \
      ./setup.py \
-     ./frameID/ \
      /home/
 
 RUN pip3 install -e .

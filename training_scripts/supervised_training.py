@@ -35,8 +35,8 @@ OUTPUT_SIZE = 3
 # Training Details
 DATA_SIZE = 150_000
 BATCH_SIZE = 128
-EPOCHS = 5
-WRITE_EVERY_N = 500
+EPOCHS = 3
+WRITE_EVERY_N = 1000
 OPTIMIZER = "AdamW"
 
 MODEL_DIR = "./models"
@@ -49,11 +49,14 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 # Initialize the dataset class and then split into train/valid.
 # 100% should come from a config file.
 data_dirs = [
+    "data/bengals-ravens",
     "data/browns-ravens",
     "data/bears-ravens",
     "data/dolphins-ravens",
     "data/ravens-browns",
     "data/ravens-bengals",
+    "data/ravens-packers",
+    "data/steelers-ravens",
 ]
 labs_files = ["frames.csv"] * len(data_dirs)
 

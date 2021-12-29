@@ -19,6 +19,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+if not os.path.isfile(args.input_path):
+    raise ValueError(f"{args.input_path} does not exist.")
+
 cap, v_properties = open_video(args.input_path)
 
 frame_limit = v_properties["length"] if args.max_frames < 0 else args.max_frames

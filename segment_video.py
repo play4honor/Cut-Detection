@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import logging
 import os
+import argparse
 
 
 # Logging setup
@@ -45,7 +46,9 @@ def main(args):
 
             if args.print_every > 0:
                 if i % args.print_every == args.print_every - 1:
-                    logging.info(f"Scored batch {i+1} ({(i+1) * args.batch_size} frames).")
+                    logging.info(
+                        f"Scored batch {i+1} ({(i+1) * args.batch_size} frames)."
+                    )
 
             # This may get removed.
             if (
@@ -66,7 +69,7 @@ def main(args):
         )
 
         if args.output_path is None:
-            out_path = os.path.splitext(args.input_path)[0] + "_frames.csv"
+            out_path = os.path.splitext(args.input_path)[0] + "_segments.csv"
         else:
             out_path = args.output_path
 
@@ -74,52 +77,50 @@ def main(args):
         seg.write_csv(out_path)
 
 
+# Set up parser and parse arguments
+sv_parser = argparse.ArgumentParser(
+    "Segment a video into scenes.", fromfile_prefix_chars="@"
+)
+sv_parser.add_argument("input_path", type=str, help="Path to video to segment.")
+sv_parser.add_argument(
+    "--output_path",
+    type=str,
+    default=None,
+    help="Path to output csv",
+)
+sv_parser.add_argument(
+    "--base-threshold",
+    type=int,
+    default=100,
+    help="Number of frames below which an A22 or EZ segment will be considered an orphan.",
+)
+sv_parser.add_argument(
+    "--blank-threshold",
+    type=int,
+    default=10,
+    help="Number of frames below which a blank segment will be considered an orphan.",
+)
+sv_parser.add_argument(
+    "--batch-size", type=int, default=128, help="Batch size for loading frames."
+)
+sv_parser.add_argument(
+    "--print-every",
+    type=int,
+    default=50,
+    help="Log message every n batches. 0 to disable.",
+)
+sv_parser.add_argument(
+    "--frame-limit",
+    type=int,
+    default=None,
+    help="Limit how many frames are processed. Mainly for testing.",
+)
+sv_parser.add_argument(
+    "--cpu", action="store_true", help="Don't use cuda even if it's available."
+)
+
 if __name__ == "__main__":
 
-    import argparse
-
-    # Set up parser and parse arguments
-    parser = argparse.ArgumentParser("Segment a video into scenes.")
-    parser.add_argument("input_path", type=str, help="Path to video to segment.")
-    parser.add_argument(
-        "--output_path",
-        type=str,
-        default=None,
-        help="Path to output csv",
-    )
-    parser.add_argument(
-        "--base-threshold",
-        type=int,
-        default=100,
-        help="Number of frames below which an A22 or EZ segment will be considered an orphan.",
-    )
-    parser.add_argument(
-        "--blank-threshold",
-        type=int,
-        default=10,
-        help="Number of frames below which a blank segment will be considered an orphan.",
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=128, help="Batch size for loading frames."
-    )
-    parser.add_argument(
-        "--print-every",
-        type=int,
-        default=50,
-        help="Log message every n batches. 0 to disable.",
-    )
-    parser.add_argument(
-        "--frame-limit",
-        type=int,
-        default=None,
-        help="Limit how many frames are processed. Mainly for testing.",
-    )
-    parser.add_argument(
-        "--cpu", action="store_true", help="Don't use cuda even if it's available."
-    )
-
-    # Start doing stuff here. Probably should be main()
-
-    args = parser.parse_args()
+    args = sv_parser.parse_args()
 
     main(args)

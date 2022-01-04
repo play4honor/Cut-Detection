@@ -18,7 +18,7 @@ pull:
 	docker pull $(IMAGE_TAG):$(VERSION)
 
 cut-video: pull
-	docker run -d -v $(OUTPUT_LOC):./sources --gpus all $(IMAGE_TAG):$(VERSION) $(TAPE)
+	docker run -d -v $(OUTPUT_LOC):/home/sources --gpus all $(IMAGE_TAG):$(VERSION) $(TAPE)
 
 cut-video-cpu: pull
-	docker run -d -v $(OUTPUT_LOC):./sources $(IMAGE_TAG):$(VERSION) $(TAPE)
+	docker run -d -v $(OUTPUT_LOC):/home/sources $(IMAGE_TAG):$(VERSION) $(TAPE)

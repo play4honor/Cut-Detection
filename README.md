@@ -1,5 +1,7 @@
 ### Segment NFL game film into All-22/Endzone footage.
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1E_Ze1C54FzLAliopoIhTrUF-FujL_tmX)
+
 #### Setup
 
 Likely we need to `pip install -e .` in the project directory so `frameID` is available to import. I don't know a better way off the top of my head.

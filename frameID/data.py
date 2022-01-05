@@ -234,19 +234,63 @@ class VideoDataset(IterableDataset):
         return self.video_info["length"]
 
 
+class FrameSequenceDataset(SupervisedFrameDataset):
+    def __init__(self, seq_length: int, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        self.seq_length = seq_length
+
+    def __getitem__(self, idx):
+
+        idx_range = [idx, min(idx + self.seq_length, len(self))]
+
+        frames = []
+
+        for i in range(*idx_range):
+
+            frames.append(super().__getitem__(i))
+
+        frame_tensor = torch.stack([f["x"] for f in frames])
+        label_tensor = torch.stack([f["y"] for f in frames])
+
+        ts = frame_tensor.shape
+
+        if idx + self.seq_length > len(self):
+
+            excess = (idx + self.seq_length) - len(self)
+
+            frame_tensor = torch.cat(
+                [frame_tensor, torch.zeros(excess, ts[1], ts[2], ts[3])]
+            )
+            label_tensor = torch.cat([label_tensor, torch.zeros(excess)])
+            mask_tensor = torch.cat(
+                (torch.zeros(self.seq_length - excess), torch.ones(excess))
+            ).bool()
+        else:
+            mask_tensor = torch.zeros(self.seq_length).bool()
+
+        return {"x": frame_tensor, "y": label_tensor, "mask": mask_tensor}
+
+
 if __name__ == "__main__":
 
     from torch.utils.data import DataLoader
 
-    ds = SupervisedFrameDataset(
-        "data/browns-ravens", labs_file="frames.csv", ext=".jpg"
+    ds = FrameSequenceDataset(
+        path="data/browns-ravens",
+        labs_file="frames.csv",
+        ext=".jpg",
+        seq_length=128,
     )
     print(len(ds))
-    print(ds.file_list[0:10])
-    print(ds.file_list[73412])
+    example = ds[133774]
+    print(example["x"].shape)
+    print(example["y"].shape)
+    print(example)
 
-    dl = DataLoader(ds, 64, shuffle=True)
+    # dl = DataLoader(ds, 64, shuffle=True)
 
-    batch = next(iter(dl))
+    # batch = next(iter(dl))
 
-    print(batch)
+    # print(batch)

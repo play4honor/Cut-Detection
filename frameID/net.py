@@ -75,7 +75,12 @@ class FrameConvNet(nn.Module):
     """
 
     def __init__(
-        self, input_channels=3, hidden_channels=32, n_conv_layers=3, average_pool_size=1
+        self,
+        input_channels=3,
+        hidden_channels=32,
+        n_conv_layers=3,
+        average_pool_size=1,
+        sequences=False,
     ):
 
         super(FrameConvNet, self).__init__()
@@ -86,6 +91,8 @@ class FrameConvNet(nn.Module):
 
         self.conv_layers = nn.ModuleList()
         self.average_pool = nn.AdaptiveAvgPool2d(average_pool_size)
+
+        self.sequences = sequences
 
         # Add the initial layer.
         self.conv_layers.append(
@@ -128,7 +135,11 @@ class FrameConvNet(nn.Module):
 
         # Average pool (or possibly not)
         x = self.average_pool(x)
-        x = torch.reshape(x, [x.shape[0], -1])
+
+        if self.sequences:
+            x = torch.reshape(x, [x.shape[0], x.shape[1], -1])
+        else:
+            x = torch.reshape(x, [x.shape[0], -1])
 
         return x
 
@@ -189,6 +200,63 @@ class FrameLinearNet(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
+class FeedForward(nn.Module):
+    def __init__(self, input_dims, ff_dims, n_classes):
+
+        super().__init__()
+
+        self.fc1 = FCLayer(
+            linear_args={"in_features": input_dims, "out_features": ff_dims},
+            batch_norm=False,
+        )
+        self.fc2 = FCLayer(
+            linear_args={"in_features": ff_dims, "out_features": n_classes},
+            batch_norm=False,
+            activation=nn.Identity,
+        )
+
+    def forward(self, x):
+
+        x = self.fc1(x)
+        x = self.fc2(x)
+
+        return x
+
+
+class FunNameModel(nn.Module):
+    def __init__(
+        self,
+        conv_net,
+        tr_encoder,
+        n_enc_layers,
+        output_net,
+    ):
+
+        super().__init__()
+
+        self.conv_net = conv_net
+        self.tr_encoder = tr_encoder
+        self.n_enc_layers = (n_enc_layers,)
+        self.output_net = output_net
+
+        self.transformer_encoder = nn.TransformerEncoder(self.tr_encoder, n_enc_layers)
+
+    def forward(self, x, mask):
+
+        input_shape = x.shape
+
+        x = torch.reshape(x, [-1, input_shape[2], input_shape[3], input_shape[4]])
+        x = self.conv_net(x)
+        x = torch.reshape(x, [input_shape[0], input_shape[1], -1])
+        x = self.transformer_encoder(x, src_key_padding_mask=mask)
+        x = self.output_net(x)
+
+        return x
+
+    def num_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
 # Function to slightly simplify loading networks and making a single callable.
 def load_and_glue_nets(param_file, conv_file, linear_file):
 
@@ -235,4 +303,18 @@ def load_default_net():
 
 if __name__ == "__main__":
 
-    pass
+    conv_net = FrameConvNet(average_pool_size=4, sequences=True)
+
+    enc_layer = nn.TransformerEncoderLayer(16 * 32, 4, 256, batch_first=True)
+    output_layer = FeedForward(16 * 32, 128, 3)
+
+    net = FunNameModel(conv_net, enc_layer, 6, output_layer)
+
+    print(net.num_params())
+
+    sample = torch.randn([4, 128, 3, 144, 256])
+    mask = torch.zeros([4, 128]).bool()
+
+    out = net(sample, mask)
+
+    print(out.shape)

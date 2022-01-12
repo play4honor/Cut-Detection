@@ -227,6 +227,7 @@ class FunNameModel(nn.Module):
     def __init__(
         self,
         conv_net,
+        mapping_layer,
         tr_encoder,
         n_enc_layers,
         output_net,
@@ -235,6 +236,7 @@ class FunNameModel(nn.Module):
         super().__init__()
 
         self.conv_net = conv_net
+        self.mapping = mapping_layer
         self.tr_encoder = tr_encoder
         self.n_enc_layers = (n_enc_layers,)
         self.output_net = output_net
@@ -248,6 +250,7 @@ class FunNameModel(nn.Module):
         x = torch.reshape(x, [-1, input_shape[2], input_shape[3], input_shape[4]])
         x = self.conv_net(x)
         x = torch.reshape(x, [input_shape[0], input_shape[1], -1])
+        x = self.mapping(x)
         x = self.transformer_encoder(x, src_key_padding_mask=mask)
         x = self.output_net(x)
 

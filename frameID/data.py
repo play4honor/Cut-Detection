@@ -263,7 +263,9 @@ class FrameSequenceDataset(SupervisedFrameDataset):
             frame_tensor = torch.cat(
                 [frame_tensor, torch.zeros(excess, ts[1], ts[2], ts[3])]
             )
-            label_tensor = torch.cat([label_tensor, torch.zeros(excess)])
+            label_tensor = torch.cat(
+                [label_tensor, torch.zeros(excess, dtype=torch.int64)]
+            )
             mask_tensor = torch.cat(
                 (torch.zeros(self.seq_length - excess), torch.ones(excess))
             ).bool()

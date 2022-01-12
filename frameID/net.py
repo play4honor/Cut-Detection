@@ -75,7 +75,12 @@ class FrameConvNet(nn.Module):
     """
 
     def __init__(
-        self, input_channels=3, hidden_channels=32, n_conv_layers=3, average_pool_size=1
+        self,
+        input_channels=3,
+        hidden_channels=32,
+        n_conv_layers=3,
+        average_pool_size=1,
+        output_size=32,
     ):
 
         super(FrameConvNet, self).__init__()
@@ -119,6 +124,12 @@ class FrameConvNet(nn.Module):
                 )
             )
 
+        # Add a fully-connected layer at the bottom to produce a reasonably-sized
+        # latent representation.
+        self.mapping_layer = nn.Linear(
+            (average_pool_size ** 2) * self.hidden_channels, output_size
+        )
+
     def forward(self, x):
 
         # Run through convolutions
@@ -129,6 +140,8 @@ class FrameConvNet(nn.Module):
         # Average pool (or possibly not)
         x = self.average_pool(x)
         x = torch.reshape(x, [x.shape[0], -1])
+        x = self.mapping_layer(x)
+        x = F.relu(x)
 
         return x
 
@@ -199,13 +212,14 @@ def load_and_glue_nets(param_file, conv_file, linear_file):
         hidden_channels=model_params["conv_channels"],
         n_conv_layers=model_params["conv_layers"],
         average_pool_size=model_params["avg_pool_size"],
+        output_size=model_params["conv_output_size"],
     )
     conv_state_dict = torch.load(conv_file, map_location="cpu")
     conv_net.load_state_dict(conv_state_dict)
 
     linear_net = FrameLinearNet(
         n_layers=model_params["linear_layers"],
-        input_size=model_params["conv_channels"] * (model_params["avg_pool_size"] ** 2),
+        input_size=model_params["conv_output_size"],
         hidden_size=model_params["linear_size"],
         output_size=model_params["linear_output_size"],
     )

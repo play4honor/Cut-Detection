@@ -26,6 +26,7 @@ NUM_WORKERS = 3
 CONV_LAYERS = 3
 CONV_HIDDEN_CHANNELS = 48
 AVG_POOL_SIZE = 4
+CONV_OUTPUT_SIZE = 32
 
 # Output Network Design
 LINEAR_LAYERS = 2
@@ -40,7 +41,7 @@ WRITE_EVERY_N = 1000
 OPTIMIZER = "AdamW"
 
 MODEL_DIR = "./models"
-MODEL_NAME = "init_model"
+MODEL_NAME = "frame_compression_model"
 LOAD_CONV_NET = False
 
 # Setup optimizer.
@@ -100,6 +101,7 @@ if __name__ == "__main__":
         hidden_channels=CONV_HIDDEN_CHANNELS,
         n_conv_layers=CONV_LAYERS,
         average_pool_size=AVG_POOL_SIZE,
+        output_size=CONV_OUTPUT_SIZE,
     )
 
     if LOAD_CONV_NET:
@@ -111,7 +113,7 @@ if __name__ == "__main__":
 
     linear_net = FrameLinearNet(
         n_layers=LINEAR_LAYERS,
-        input_size=CONV_HIDDEN_CHANNELS * (AVG_POOL_SIZE ** 2),
+        input_size=CONV_OUTPUT_SIZE,
         hidden_size=LINEAR_SIZE,
         output_size=OUTPUT_SIZE,
     )
@@ -232,6 +234,7 @@ if __name__ == "__main__":
                 "conv_layers": CONV_LAYERS,
                 "conv_channels": CONV_HIDDEN_CHANNELS,
                 "avg_pool_size": AVG_POOL_SIZE,
+                "conv_output_size": CONV_OUTPUT_SIZE,
                 # Linear params
                 "linear_layers": LINEAR_LAYERS,
                 "linear_size": LINEAR_SIZE,

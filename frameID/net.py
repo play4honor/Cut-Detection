@@ -203,7 +203,8 @@ class FrameLinearNet(nn.Module):
 
 
 # Function to slightly simplify loading networks and making a single callable.
-def load_and_glue_nets(param_file, conv_file, linear_file):
+# Optionally only include the conv net, which might be a little confusing.
+def load_and_glue_nets(param_file, conv_file, linear_file=None):
 
     with open(param_file, "r") as f:
         model_params = json.load(f)
@@ -217,16 +218,21 @@ def load_and_glue_nets(param_file, conv_file, linear_file):
     conv_state_dict = torch.load(conv_file, map_location="cpu")
     conv_net.load_state_dict(conv_state_dict)
 
-    linear_net = FrameLinearNet(
-        n_layers=model_params["linear_layers"],
-        input_size=model_params["conv_output_size"],
-        hidden_size=model_params["linear_size"],
-        output_size=model_params["linear_output_size"],
-    )
-    linear_state_dict = torch.load(linear_file, map_location="cpu")
-    linear_net.load_state_dict(linear_state_dict)
+    if linear_file is not None:
 
-    net = nn.Sequential(conv_net, linear_net)
+        linear_net = FrameLinearNet(
+            n_layers=model_params["linear_layers"],
+            input_size=model_params["conv_output_size"],
+            hidden_size=model_params["linear_size"],
+            output_size=model_params["linear_output_size"],
+        )
+        linear_state_dict = torch.load(linear_file, map_location="cpu")
+        linear_net.load_state_dict(linear_state_dict)
+
+        net = nn.Sequential(conv_net, linear_net)
+
+    else:
+        net = conv_net
 
     return net, model_params
 

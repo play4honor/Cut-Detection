@@ -56,8 +56,8 @@ data_dirs = [
     "data/dolphins-ravens",
     "data/ravens-browns",
     "data/ravens-bengals",
-    "data/ravens-packers",
-    "data/steelers-ravens",
+    # "data/ravens-packers",
+    # "data/steelers-ravens",
 ]
 labs_files = ["frames.csv"] * len(data_dirs)
 

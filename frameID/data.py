@@ -234,19 +234,61 @@ class VideoDataset(IterableDataset):
         return self.video_info["length"]
 
 
+class CompressedDataset(Dataset):
+    def __init__(self, file_path, seq_length=128):
+
+        super().__init__()
+
+        data = torch.load(file_path)
+
+        self.seq_length = seq_length
+        self.x = data["x"]
+        self.y = data["y"]
+
+    def __len__(self):
+
+        return self.x.shape[0]
+
+    def __getitem__(self, idx):
+
+        idx_range = [idx, min(idx + self.seq_length, len(self))]
+
+        pad_size = max(0, (idx + self.seq_length) - len(self))
+
+        x = self.x[idx_range[0] : idx_range[1], :]
+        y = self.y[idx_range[0] : idx_range[1]]
+
+        if pad_size > 0:
+
+            x = torch.nn.functional.pad(x, (0, 0, 0, pad_size))
+            y = torch.nn.functional.pad(y, (0, pad_size))
+
+            mask = torch.cat(
+                (torch.zeros(self.seq_length - pad_size), torch.ones(pad_size))
+            ).bool()
+
+        else:
+
+            mask = torch.zeros(self.seq_length).bool()
+
+        return {"x": x, "y": y, "mask": mask}
+
+
 if __name__ == "__main__":
 
     from torch.utils.data import DataLoader
 
-    ds = SupervisedFrameDataset(
-        "data/browns-ravens", labs_file="frames.csv", ext=".jpg"
-    )
+    ds = CompressedDataset("data/compressed_frames.pt", seq_length=128)
+
     print(len(ds))
-    print(ds.file_list[0:10])
-    print(ds.file_list[73412])
+    print(ds[801530]["x"])
+    print(ds[801530]["y"])
+    print(ds[801530]["mask"])
 
     dl = DataLoader(ds, 64, shuffle=True)
 
     batch = next(iter(dl))
 
-    print(batch)
+    print(batch["x"].shape)
+    print(batch["y"].shape)
+    print(batch["mask"].shape)

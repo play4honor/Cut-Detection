@@ -62,7 +62,7 @@ loader = DataLoader(
     batch_size=BATCH_SIZE,
     shuffle=False,
     num_workers=NUM_WORKERS,
-    drop_last=False,
+    drop_last=True,
 )
 logging.info(f"{len(ds)} frames, {len(loader)} batches.")
 

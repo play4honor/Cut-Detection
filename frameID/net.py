@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import math
+
 import json
 import os
 
@@ -195,6 +197,72 @@ class FrameLinearNet(nn.Module):
         for layer in self.layers:
 
             x = layer(x)
+
+        return x
+
+    def num_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(
+            torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
+        )
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer("pe", pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: Tensor, shape [seq_len, batch_size, embedding_dim]
+        """
+        x = x + self.pe[: x.size(0)]
+        return self.dropout(x)
+
+
+class NagyNet(nn.Module):
+    def __init__(
+        self,
+        net_size: int,
+        output_size: int,
+        n_layers: int,
+        dropout: float,
+        layer_args: dict,
+    ):
+
+        super().__init__()
+
+        self.position_encoding = PositionalEncoding(net_size, dropout=dropout)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            net_size, dropout=dropout, **layer_args, batch_first=True
+        )
+
+        self.transformer = nn.TransformerEncoder(encoder_layer, n_layers)
+        self.transformer_activation = nn.ReLU()
+        self.fc1 = nn.Linear(net_size, layer_args["dim_feedforward"])
+        self.fc_activation = nn.ReLU()
+        self.bn = nn.BatchNorm1d(layer_args["dim_feedforward"])
+        self.output_layer = nn.Linear(layer_args["dim_feedforward"], output_size)
+
+    def forward(self, x, mask):
+
+        x = self.position_encoding(x)
+        x = self.transformer(x, src_key_padding_mask=mask)
+        x = self.transformer_activation(x)
+        x = self.fc1(x)
+        x = self.fc_activation(x)
+        x = x.permute(0, 2, 1)
+        x = self.bn(x)
+        x = x.permute(0, 2, 1)
+        x = self.output_layer(x)
 
         return x
 

@@ -261,7 +261,7 @@ class CompressedDataset(Dataset):
         if pad_size > 0:
 
             x = torch.nn.functional.pad(x, (0, 0, 0, pad_size))
-            y = torch.nn.functional.pad(y, (0, pad_size))
+            y = torch.nn.functional.pad(y, (0, pad_size), value=3)
 
             mask = torch.cat(
                 (torch.zeros(self.seq_length - pad_size), torch.ones(pad_size))
@@ -282,7 +282,7 @@ if __name__ == "__main__":
 
     print(len(ds))
     print(ds[801530]["x"])
-    print(ds[801530]["y"])
+    print(ds[801530]["y"].dtype)
     print(ds[801530]["mask"])
 
     dl = DataLoader(ds, 64, shuffle=True)

@@ -2,11 +2,10 @@ from frameID.net import NagyNet
 from frameID.data import CompressedDataset
 
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 
 import logging
 import os
-import math
 import json
 
 logging.basicConfig(
@@ -44,25 +43,19 @@ LOAD_CONV_NET = False
 # Setup optimizer.
 opt_class = getattr(torch.optim, OPTIMIZER)
 
-ds = CompressedDataset("data/compressed_frames.pt", seq_length=SEQ_LENGTH)
-
-idx_perm = torch.randperm(len(ds))
-
-train_idx = idx_perm[: math.floor(len(ds) * 0.75)].tolist()
-valid_idx = idx_perm[math.floor(len(ds) * 0.75) :].tolist()
-
-ds_train = Subset(ds, train_idx)
-ds_valid = Subset(ds, valid_idx)
+ds = CompressedDataset("data/training_compressed_frames.pt", seq_length=SEQ_LENGTH)
+vds = CompressedDataset("data/validation_compressed_frames.pt", seq_length=SEQ_LENGTH)
 
 train_loader = DataLoader(
-    ds_train,
+    ds,
     batch_size=BATCH_SIZE,
     shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
 )
+
 valid_loader = DataLoader(
-    ds_valid,
+    vds,
     batch_size=BATCH_SIZE,
     shuffle=True,
     num_workers=NUM_WORKERS,
@@ -194,7 +187,7 @@ if __name__ == "__main__":
 
     # Save the two models and the parameters.
     torch.save(net.state_dict(), f"{MODEL_DIR}/{MODEL_NAME}_transformer.pt")
-    with open(f"{MODEL_DIR}/{MODEL_NAME}_model_params.json", "w") as f:
+    with open(f"{MODEL_DIR}/{MODEL_NAME}_transformer_model_params.json", "w") as f:
         json.dump(
             {
                 # Model params

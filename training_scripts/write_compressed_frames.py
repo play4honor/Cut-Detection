@@ -5,10 +5,6 @@ import torch
 from torch.utils.data import DataLoader, ConcatDataset
 
 import logging
-import os
-import math
-import json
-from itertools import chain
 
 logging.basicConfig(
     level="INFO",
@@ -25,7 +21,7 @@ WRITE_EVERY_N = 1000
 
 MODEL_DIR = "./models"
 MODEL_NAME = "frame_compression_model"
-OUTPUT_PATH = "./data/compressed_frames.pt"
+OUTPUT_PATH = "./data/validation_compressed_frames.pt"
 
 # Load the network.
 net, _ = load_and_glue_nets(
@@ -38,14 +34,14 @@ net.to(device)
 # Initialize the dataset class.
 # 100% should come from a config file.
 data_dirs = [
-    "data/bengals-ravens",
-    "data/browns-ravens",
-    "data/bears-ravens",
-    "data/dolphins-ravens",
-    "data/ravens-browns",
-    "data/ravens-bengals",
-    # "data/ravens-packers",
-    # "data/steelers-ravens",
+    # "data/bengals-ravens",
+    # "data/browns-ravens",
+    # "data/bears-ravens",
+    # "data/dolphins-ravens",
+    # "data/ravens-browns",
+    # "data/ravens-bengals",
+    "data/ravens-packers",
+    "data/steelers-ravens",
 ]
 labs_files = ["frames.csv"] * len(data_dirs)
 

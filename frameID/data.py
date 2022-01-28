@@ -253,25 +253,36 @@ class CompressedDataset(Dataset):
 
         idx_range = [idx, min(idx + self.seq_length, len(self))]
 
-        pad_size = max(0, (idx + self.seq_length) - len(self))
-
         x = self.x[idx_range[0] : idx_range[1], :]
         y = self.y[idx_range[0] : idx_range[1]]
+
+        x, mask, y = self.transform_tensor(x, self.seq_length, y)
+
+        return {"x": x, "y": y, "mask": mask}
+
+    @staticmethod
+    def transform_tensor(x, seq_length, y=None):
+
+        pad_size = max(0, seq_length - x.shape[0])
 
         if pad_size > 0:
 
             x = torch.nn.functional.pad(x, (0, 0, 0, pad_size))
-            y = torch.nn.functional.pad(y, (0, pad_size), value=3)
+            y = (
+                torch.nn.functional.pad(y, (0, pad_size), value=3)
+                if y is not None
+                else None
+            )
 
             mask = torch.cat(
-                (torch.zeros(self.seq_length - pad_size), torch.ones(pad_size))
+                (torch.zeros(seq_length - pad_size), torch.ones(pad_size))
             ).bool()
 
         else:
 
-            mask = torch.zeros(self.seq_length).bool()
+            mask = torch.zeros(seq_length).bool()
 
-        return {"x": x, "y": y, "mask": mask}
+        return x, mask, y
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
-from frameID.net import load_default_net
-from frameID.data import VideoDataset
+from frameID.net import load_transformer
+from frameID.data import VideoDataset, CompressedDataset
 from frameID.segmentation import Segmentation
 
 import torch
@@ -28,12 +28,17 @@ def main(args):
     ds = VideoDataset(args.input_path, resize=256)
     dl = DataLoader(ds, args.batch_size)
 
-    net, params = load_default_net()
+    conv_net, nagy_net = load_transformer(
+        "models/frame_compression_model_model_params.json",
+        "models/frame_compression_model_classifier_conv.pt",
+        "models/frame_compression_model_transformer_model_params.json",
+        "models/frame_compression_model_transformer.pt",
+    )
 
-    net.eval()
-    net.to(device)
+    conv_net.to(device)
+    nagy_net.to(device)
 
-    logging.info("Loaded default classifier.")
+    logging.info("Loaded Cyber-Nagy")
 
     with torch.no_grad():
 
@@ -42,7 +47,13 @@ def main(args):
         for i, batch in enumerate(iter(dl)):
 
             batch = batch.to(device)
-            yy.append(net(batch))
+            compressed_frames = conv_net(batch)
+
+            x, mask, _ = CompressedDataset.transform_tensor(
+                compressed_frames, args.batch_size
+            )
+
+            yy.append(nagy_net(x.unsqueeze(0), mask.unsqueeze(0).to(device)).squeeze(0))
 
             if args.print_every > 0:
                 if i % args.print_every == args.print_every - 1:

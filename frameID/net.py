@@ -321,6 +321,41 @@ def load_default_net():
     return load_and_glue_nets(params_file, conv_file, linear_file)
 
 
+def load_transformer(
+    conv_config_path, conv_model_path, transformer_config_path, transformer_model_path
+):
+
+    with open(conv_config_path, "r") as f:
+        conv_config = json.load(f)
+
+    conv_net = FrameConvNet(
+        hidden_channels=conv_config["conv_channels"],
+        n_conv_layers=conv_config["conv_layers"],
+        average_pool_size=conv_config["avg_pool_size"],
+        output_size=conv_config["conv_output_size"],
+    )
+    conv_state_dict = torch.load(conv_model_path, map_location="cpu")
+    conv_net.load_state_dict(conv_state_dict)
+
+    with open(transformer_config_path, "r") as f:
+        transformer_config = json.load(f)
+
+    transformer = NagyNet(
+        net_size=transformer_config["network_size"],
+        output_size=transformer_config["output_size"],
+        n_layers=transformer_config["n_layers"],
+        dropout=transformer_config["dropout"],
+        layer_args={
+            "nhead": transformer_config["n_heads"],
+            "dim_feedforward": transformer_config["ff_size"],
+        },
+    )
+    transformer_state_dict = torch.load(transformer_model_path, map_location="cpu")
+    transformer.load_state_dict(transformer_state_dict)
+
+    return conv_net.eval(), transformer.eval()
+
+
 if __name__ == "__main__":
 
     pass

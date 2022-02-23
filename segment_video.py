@@ -28,6 +28,8 @@ def main(args):
     ds = VideoDataset(args.input_path, resize=256)
     dl = DataLoader(ds, args.batch_size)
 
+    logging.info(f"{len(ds)} total frames | {len(dl)} total batches")
+
     conv_net, nagy_net = load_transformer(
         "models/frame_compression_model_model_params.json",
         "models/frame_compression_model_classifier_conv.pt",
@@ -49,7 +51,7 @@ def main(args):
             batch = batch.to(device)
             compressed_frames = conv_net(batch)
 
-            x, mask, _ = CompressedDataset.transform_tensor(
+            x, mask, _, _, _ = CompressedDataset.transform_tensor(
                 compressed_frames, args.batch_size
             )
 
@@ -94,7 +96,7 @@ sv_parser = argparse.ArgumentParser(
 )
 sv_parser.add_argument("input_path", type=str, help="Path to video to segment.")
 sv_parser.add_argument(
-    "--output_path",
+    "--output-path",
     type=str,
     default=None,
     help="Path to output csv",

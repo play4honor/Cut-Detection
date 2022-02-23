@@ -244,6 +244,21 @@ class CompressedDataset(Dataset):
         self.seq_length = seq_length
         self.x = data["x"]
         self.y = data["y"]
+        self.conv_scores = data["scores"]
+
+        segment_starts = torch.cat(
+            [
+                torch.tensor([0]),
+                torch.where(self.y[:-1] != self.y[1:])[0] + 1,
+                torch.tensor([self.y.shape[0]]),
+            ]
+        )
+
+        self.weights = torch.zeros_like(self.y, dtype=torch.float)
+        for start, end in zip(segment_starts[:-1], segment_starts[1:]):
+            self.weights[start:end] = torch.cumsum(torch.ones(end - start), 0) / (
+                end - start
+            )
 
     def __len__(self):
 
@@ -255,13 +270,17 @@ class CompressedDataset(Dataset):
 
         x = self.x[idx_range[0] : idx_range[1], :]
         y = self.y[idx_range[0] : idx_range[1]]
+        weight = self.weights[idx_range[0] : idx_range[1]]
+        score = self.conv_scores[idx_range[0] : idx_range[1], :]
 
-        x, mask, y = self.transform_tensor(x, self.seq_length, y)
+        x, mask, y, score, weight = self.transform_tensor(
+            x, self.seq_length, y, score, weight
+        )
 
-        return {"x": x, "y": y, "mask": mask}
+        return {"x": x, "y": y, "score": score, "mask": mask, "weight": weight}
 
     @staticmethod
-    def transform_tensor(x, seq_length, y=None):
+    def transform_tensor(x, seq_length, y=None, score=None, weight=None):
 
         pad_size = max(0, seq_length - x.shape[0])
 
@@ -273,6 +292,16 @@ class CompressedDataset(Dataset):
                 if y is not None
                 else None
             )
+            score = (
+                torch.nn.functional.pad(score, (0, 0, 0, pad_size), value=3)
+                if score is not None
+                else None
+            )
+            weight = (
+                torch.nn.functional.pad(weight, (0, pad_size), value=0)
+                if weight is not None
+                else None
+            )
 
             mask = torch.cat(
                 (torch.zeros(seq_length - pad_size), torch.ones(pad_size))
@@ -282,17 +311,20 @@ class CompressedDataset(Dataset):
 
             mask = torch.zeros(seq_length).bool()
 
-        return x, mask, y
+        return x, mask, y, score, weight
 
 
 if __name__ == "__main__":
 
     from torch.utils.data import DataLoader
 
-    ds = CompressedDataset("data/compressed_frames.pt", seq_length=128)
+    ds = CompressedDataset("data/training_compressed_frames.pt", seq_length=128)
 
     print(len(ds))
-    print(ds[801530]["x"])
+    print(ds[0])
+
+    raise NotImplementedError
+    print(ds[801530]["score"])
     print(ds[801530]["y"].dtype)
     print(ds[801530]["mask"])
 

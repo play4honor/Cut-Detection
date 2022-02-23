@@ -272,7 +272,8 @@ class NagyNet(nn.Module):
 
 # Function to slightly simplify loading networks and making a single callable.
 # Optionally only include the conv net, which might be a little confusing.
-def load_and_glue_nets(param_file, conv_file, linear_file=None):
+# Also optionally load the conv and linear nets separate
+def load_and_glue_nets(param_file, conv_file, linear_file=None, separate=True):
 
     with open(param_file, "r") as f:
         model_params = json.load(f)
@@ -302,7 +303,12 @@ def load_and_glue_nets(param_file, conv_file, linear_file=None):
     else:
         net = conv_net
 
-    return net, model_params
+    if (linear_file is None) or (not separate):
+
+        return net, model_params
+
+    else:
+        return conv_net, linear_net, model_params
 
 
 # Load a specific network that's included in the module.

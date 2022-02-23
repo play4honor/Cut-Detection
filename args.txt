@@ -1,3 +1,5 @@
 video/2021.12.19_Ravens_Packers.mp4
 --batch-size
 256
+--output-path
+video/2021.12.19_Ravens_Packers_semgents_b.csv

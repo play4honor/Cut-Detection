@@ -85,7 +85,7 @@ if __name__ == "__main__":
     optimizer = opt_class(
         filter(lambda p: p.requires_grad, net.parameters()),
     )
-    criterion = torch.nn.CrossEntropyLoss(reduction="sum", ignore_index=3)
+    criterion = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=3)
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -105,6 +105,7 @@ if __name__ == "__main__":
             x = data["x"].to(device)
             mask = data["mask"].to(device)
             labels = data["y"].squeeze().to(device)
+            weights = data["weight"].to(device)
             pred = net(x, mask)
 
             loss = criterion(
@@ -112,10 +113,12 @@ if __name__ == "__main__":
                 torch.reshape(labels, [-1]),
             )
 
-            loss.backward()
+            weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * weights)
+
+            weighted_loss.backward()
             optimizer.step()
 
-            accum_loss += loss.item()
+            accum_loss += weighted_loss.item()
             n_obs += x.shape[0] * x.shape[1]
 
             if i % WRITE_EVERY_N == WRITE_EVERY_N - 1:
@@ -144,12 +147,15 @@ if __name__ == "__main__":
                 x = data["x"].to(device)
                 mask = data["mask"].to(device)
                 labels = data["y"].squeeze().to(device)
+                weights = data["weight"].to(device)
                 pred = net(x, mask)
 
                 loss = criterion(
                     torch.reshape(pred, [-1, OUTPUT_SIZE]),
                     torch.reshape(labels, [-1]),
                 )
+
+                weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * weights)
 
                 pc = torch.max(pred, dim=2)[1]
 
@@ -158,7 +164,7 @@ if __name__ == "__main__":
                     correct[i] += torch.sum(pc[labels == i] == labels[labels == i])
                     total[i] += torch.sum(labels == i)
 
-                accum_loss += loss.item()
+                accum_loss += weighted_loss.item()
                 n_obs += x.shape[0]
 
                 if i % WRITE_EVERY_N == WRITE_EVERY_N - 1:

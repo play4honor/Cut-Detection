@@ -246,19 +246,7 @@ class CompressedDataset(Dataset):
         self.y = data["y"]
         self.conv_scores = data["scores"]
 
-        segment_starts = torch.cat(
-            [
-                torch.tensor([0]),
-                torch.where(self.y[:-1] != self.y[1:])[0] + 1,
-                torch.tensor([self.y.shape[0]]),
-            ]
-        )
-
-        self.weights = torch.zeros_like(self.y, dtype=torch.float)
-        for start, end in zip(segment_starts[:-1], segment_starts[1:]):
-            self.weights[start:end] = torch.cumsum(torch.ones(end - start), 0) / (
-                end - start
-            )
+        self.weights = self._construct_weights()
 
     def __len__(self):
 
@@ -278,6 +266,10 @@ class CompressedDataset(Dataset):
         )
 
         return {"x": x, "y": y, "score": score, "mask": mask, "weight": weight}
+
+    def _construct_weights(self):
+
+        return 1 - torch.sigmoid(self.conv_scores.max(dim=1)[0])
 
     @staticmethod
     def transform_tensor(x, seq_length, y=None, score=None, weight=None):

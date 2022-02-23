@@ -47,7 +47,9 @@ class FCLayer(nn.Module):
     Small module for building fully-connected networks.
     """
 
-    def __init__(self, linear_args: dict, activation=nn.ReLU, batch_norm=True):
+    def __init__(
+        self, linear_args: dict, activation=nn.ReLU, batch_norm=True, dropout=0.0
+    ):
 
         super(FCLayer, self).__init__()
 
@@ -61,11 +63,14 @@ class FCLayer(nn.Module):
         else:
             self.bn = nn.Identity()
 
+        self.dropout = nn.Dropout(dropout)
+
     def forward(self, x):
 
         x = self.linear(x)
         x = self.activation(x)
         x = self.bn(x)
+        x = self.dropout(x)
 
         return x
 
@@ -360,6 +365,47 @@ def load_transformer(
     transformer.load_state_dict(transformer_state_dict)
 
     return conv_net.eval(), transformer.eval()
+
+
+class LovieNet(nn.Module):
+    def __init__(
+        self,
+        input_size: int,
+        hidden_size: int,
+        output_size: int,
+        n_layers: int,
+        dropout: float,
+    ):
+
+        super().__init__()
+
+        self.gru = nn.GRU(
+            input_size,
+            hidden_size,
+            n_layers,
+            batch_first=True,
+            dropout=dropout,
+            bidirectional=True,
+        )
+
+        self.fc1 = FCLayer(
+            {"in_features": hidden_size, "out_features": hidden_size * 2},
+            batch_norm=True,
+            dropout=dropout,
+        )
+        self.fc2 = FCLayer(
+            {"in_features": hidden_size * 2, "out_features": output_size},
+            batch_norm=False,
+            activation=nn.Identity,
+        )
+
+    def forward(self, x):
+
+        x, _ = self.gru(x)
+        x = self.fc1(x)
+        x = self.fc2(x)
+
+        return x
 
 
 if __name__ == "__main__":

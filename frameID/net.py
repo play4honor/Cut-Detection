@@ -332,8 +332,12 @@ def load_default_net():
     return load_and_glue_nets(params_file, conv_file, linear_file)
 
 
-def load_transformer(
-    conv_config_path, conv_model_path, transformer_config_path, transformer_model_path
+def load_stacked_model(
+    conv_config_path,
+    conv_model_path,
+    second_stage_class,
+    second_stage_config_path,
+    second_stage_model_path,
 ):
 
     with open(conv_config_path, "r") as f:
@@ -348,23 +352,36 @@ def load_transformer(
     conv_state_dict = torch.load(conv_model_path, map_location="cpu")
     conv_net.load_state_dict(conv_state_dict)
 
-    with open(transformer_config_path, "r") as f:
-        transformer_config = json.load(f)
+    with open(second_stage_config_path, "r") as f:
+        seq_config = json.load(f)
 
-    transformer = NagyNet(
-        net_size=transformer_config["network_size"],
-        output_size=transformer_config["output_size"],
-        n_layers=transformer_config["n_layers"],
-        dropout=transformer_config["dropout"],
-        layer_args={
-            "nhead": transformer_config["n_heads"],
-            "dim_feedforward": transformer_config["ff_size"],
-        },
-    )
-    transformer_state_dict = torch.load(transformer_model_path, map_location="cpu")
-    transformer.load_state_dict(transformer_state_dict)
+    if second_stage_class == NagyNet:
 
-    return conv_net.eval(), transformer.eval()
+        seq_net = second_stage_class(
+            net_size=seq_config["network_size"],
+            output_size=seq_config["output_size"],
+            n_layers=seq_config["n_layers"],
+            dropout=seq_config["dropout"],
+            layer_args={
+                "nhead": seq_config["n_heads"],
+                "dim_feedforward": seq_config["ff_size"],
+            },
+        )
+
+    elif second_stage_class == LovieNet:
+
+        seq_net = second_stage_class(
+            input_size=seq_config["input_size"],
+            hidden_size=seq_config["hidden_size"],
+            output_size=seq_config["output_size"],
+            n_layers=seq_config["n_layers"],
+            dropout=seq_config["dropout"],
+        )
+
+    seq_net_state_dict = torch.load(second_stage_model_path, map_location="cpu")
+    seq_net.load_state_dict(seq_net_state_dict)
+
+    return conv_net.eval(), seq_net.eval()
 
 
 class LovieNet(nn.Module):
@@ -388,24 +405,27 @@ class LovieNet(nn.Module):
             bidirectional=True,
         )
 
-        self.fc1 = FCLayer(
-            {"in_features": hidden_size, "out_features": hidden_size * 2},
-            batch_norm=True,
-            dropout=dropout,
-        )
-        self.fc2 = FCLayer(
-            {"in_features": hidden_size * 2, "out_features": output_size},
-            batch_norm=False,
-            activation=nn.Identity,
-        )
+        self.fc1 = nn.Linear(hidden_size * 2, hidden_size * 4)
+        self.fc_activation = nn.ReLU()
+        self.bn = nn.BatchNorm1d(hidden_size * 4)
+        self.do = nn.Dropout(dropout)
+        self.output_layer = nn.Linear(hidden_size * 4, output_size)
 
     def forward(self, x):
 
         x, _ = self.gru(x)
         x = self.fc1(x)
-        x = self.fc2(x)
+        x = self.fc_activation(x)
+        x = x.permute(0, 2, 1)  # y tho
+        x = self.bn(x)
+        x = x.permute(0, 2, 1)
+        x = self.do(x)
+        x = self.output_layer(x)
 
         return x
+
+    def num_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
 if __name__ == "__main__":

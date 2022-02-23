@@ -1,4 +1,4 @@
-from frameID.net import NagyNet
+from frameID.net import LovieNet
 from frameID.data import CompressedDataset
 
 import torch
@@ -21,15 +21,13 @@ NUM_WORKERS = 3
 # TODO Read all this from a config file and save the file with the model.
 
 # Transformer design
-N_ATTENTION_HEADS = 2
-FF_SIZE = 256
-N_LAYERS = 3
-NETWORK_SIZE = 32
+N_LAYERS = 2
+INPUT_SIZE = 32
+HIDDEN_SIZE = 128
 OUTPUT_SIZE = 3
 SEQ_LENGTH = 256
 
 # Training Details
-DATA_SIZE = 150_000
 BATCH_SIZE = 128
 DROPOUT = 0.1
 EPOCHS = 3
@@ -68,19 +66,16 @@ logging.info(
 
 if __name__ == "__main__":
 
-    net = NagyNet(
-        net_size=NETWORK_SIZE,
+    net = LovieNet(
+        input_size=INPUT_SIZE,
+        hidden_size=HIDDEN_SIZE,
         output_size=OUTPUT_SIZE,
         n_layers=N_LAYERS,
         dropout=DROPOUT,
-        layer_args={
-            "nhead": N_ATTENTION_HEADS,
-            "dim_feedforward": FF_SIZE,
-        },
     )
 
     net.to(device)
-    logging.info(f"NagyNet Weights: {net.num_params()}")
+    logging.info(f"{type(net).__name__} Weights: {net.num_params()}")
 
     optimizer = opt_class(
         filter(lambda p: p.requires_grad, net.parameters()),
@@ -103,17 +98,17 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             x = data["x"].to(device)
-            mask = data["mask"].to(device)
+            # mask = data["mask"].to(device)
             labels = data["y"].squeeze().to(device)
-            weights = data["weight"].to(device)
-            pred = net(x, mask)
+            # weights = data["weight"].to(device)
+            pred = net(x)
 
             loss = criterion(
                 torch.reshape(pred, [-1, OUTPUT_SIZE]),
                 torch.reshape(labels, [-1]),
             )
 
-            weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * weights)
+            weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * 1)
 
             weighted_loss.backward()
             optimizer.step()
@@ -145,17 +140,17 @@ if __name__ == "__main__":
             for i, data in enumerate(valid_loader):
 
                 x = data["x"].to(device)
-                mask = data["mask"].to(device)
+                # mask = data["mask"].to(device)
                 labels = data["y"].squeeze().to(device)
-                weights = data["weight"].to(device)
-                pred = net(x, mask)
+                # weights = data["weight"].to(device)
+                pred = net(x)
 
                 loss = criterion(
                     torch.reshape(pred, [-1, OUTPUT_SIZE]),
                     torch.reshape(labels, [-1]),
                 )
 
-                weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * weights)
+                weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * 1)
 
                 pc = torch.max(pred, dim=2)[1]
 
@@ -197,14 +192,12 @@ if __name__ == "__main__":
         json.dump(
             {
                 # Model params
-                "n_heads": N_ATTENTION_HEADS,
-                "ff_size": FF_SIZE,
                 "n_layers": N_LAYERS,
-                "network_size": NETWORK_SIZE,
+                "input_size": INPUT_SIZE,
+                "hidden_size": HIDDEN_SIZE,
                 "output_size": OUTPUT_SIZE,
                 "dropout": DROPOUT,
                 # Training params
-                "data_size": DATA_SIZE,
                 "batch_size": BATCH_SIZE,
                 "epochs": EPOCHS,
             },

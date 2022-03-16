@@ -30,6 +30,18 @@ def open_video(video_path):
         "height": height,
     }
 
+def split_iter_workers(worker_id):
+    '''
+    Each worker operates on a portion of every video (dataset)
+    '''
+    info = torch.utils.data.get_worker_info()
+    workers = info.num_workers
+
+    # For each dataset in the chained dataset, set the starting `curr_frame`
+    # based on the worker id of the worker (start the iter at worker_id * split size)
+    for ds in info.dataset.datasets:
+        split_size = len(ds) // workers
+        ds.curr_frame = worker_id*split_size
 
 class SupervisedFrameDataset(IterableDataset):
     """Dataset class for basic classification task."""
@@ -130,9 +142,9 @@ class SupervisedFrameDataset(IterableDataset):
 
             return {"x": x, "y": label.long()}
 
-    # def __len__(self):
+    def __len__(self):
 
-    #     return len(self.file_list)
+         return len(self.file_list)
 
 
 class VideoDataset(IterableDataset):

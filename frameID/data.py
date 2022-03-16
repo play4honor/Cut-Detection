@@ -5,7 +5,7 @@ import torch
 import torchvision.transforms as transforms
 from torchvision.io import ImageReadMode, read_image
 
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import Dataset, IterableDataset, get_worker_info
 
 import cv2
 
@@ -34,7 +34,7 @@ def split_iter_workers(worker_id):
     '''
     Each worker operates on a portion of every video (dataset)
     '''
-    info = torch.utils.data.get_worker_info()
+    info = get_worker_info()
     workers = info.num_workers
 
     # For each dataset in the chained dataset, set the starting `curr_frame`

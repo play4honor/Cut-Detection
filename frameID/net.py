@@ -357,6 +357,9 @@ def load_stacked_model(
 
     if second_stage_class == NagyNet:
 
+        for k in seq_config.keys():
+            print(k)
+
         seq_net = second_stage_class(
             net_size=seq_config["network_size"],
             output_size=seq_config["output_size"],

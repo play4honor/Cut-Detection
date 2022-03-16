@@ -31,73 +31,7 @@ def open_video(video_path):
     }
 
 
-class ContrastiveFrameDataset(Dataset):
-    """Dataset class for contrastive learning."""
-
-    IMG_EXT = (
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".ppm",
-        ".bmp",
-        ".pgm",
-        ".tif",
-        ".tiff",
-        ".webp",
-    )
-
-    def __init__(self, path, trs: transforms.Compose, ext=".jpg", size=None):
-
-        super(ContrastiveFrameDataset, self).__init__()
-
-        if ext not in self.IMG_EXT:
-            raise ValueError(f"{ext} is not a valid image file extension.")
-
-        self.ext = ext
-        self.path = path
-        self.read_mode = ImageReadMode.UNCHANGED
-        self.trs = trs
-
-        self.file_list = self._parse_path(self.path)
-
-        # Optionally limit the size of the dataset
-        if size is not None:
-            self.file_list = self.file_list[: min(size, len(self.file_list))]
-
-    def _parse_path(self, path):
-
-        fileList = []
-
-        for r, _, f in os.walk(path):
-            fullpaths = [os.path.join(r, fl) for fl in f]
-            fileList.append(fullpaths)
-
-        flatList = [p for paths in fileList for p in paths]
-        flatList = [f for f in filter(lambda x: self.ext in x[-5:], flatList)]
-
-        return flatList
-
-    def __getitem__(self, idx):
-
-        p = self.file_list[idx]
-        x = read_image(p, self.read_mode)
-        # We need this format for stuff.
-        x = x.float() / 255
-
-        # We apply each transformation twice.
-
-        return {
-            "x": x,
-            "x_t1": self.trs(x),
-            "x_t2": self.trs(x),
-        }
-
-    def __len__(self):
-
-        return len(self.file_list)
-
-
-class SupervisedFrameDataset(Dataset):
+class SupervisedFrameDataset(IterableDataset):
     """Dataset class for basic classification task."""
 
     IMG_EXT = (
@@ -125,6 +59,7 @@ class SupervisedFrameDataset(Dataset):
         self.ext = ext
         self.path = path
         self.read_mode = ImageReadMode.UNCHANGED
+        self.curr_frame = 0
 
         # Turn the contents of the csv into a tensor. This may be a bad idea.
         with open(f"{self.path}/{labs_file}", "r") as f:
@@ -165,16 +100,35 @@ class SupervisedFrameDataset(Dataset):
         pos = torch.searchsorted(self.label_ranges[0, :], idx, right=True).item()
         return self.label_ranges[1, pos - 1]
 
-    def __getitem__(self, idx):
+    def _is_blank(self, img_tensor):
+        return img_tensor.mean().item() < 0.1
 
-        label = self._get_label(idx)
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+
+        idx = self.curr_frame
+        # Increment the current frame
+        self.curr_frame += 1
+
+        if idx >= len(self):
+            raise StopIteration
 
         p = self.file_list[idx]
         x = read_image(p, self.read_mode)
-        # We need this format for stuff.
         x = x.float() / 255
 
-        return {"x": x, "y": label.long()}
+        label = self._get_label(idx)
+
+        # Check if image is blank
+        if self._is_blank(x) or label.item() == 2:
+
+            return next(self)
+
+        else:
+
+            return {"x": x, "y": label.long()}
 
     def __len__(self):
 

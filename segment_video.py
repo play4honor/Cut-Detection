@@ -1,4 +1,4 @@
-from frameID.net import load_transformer
+from frameID.net import load_stacked_model, LovieNet
 from frameID.data import VideoDataset, CompressedDataset
 from frameID.segmentation import Segmentation
 
@@ -30,9 +30,10 @@ def main(args):
 
     logging.info(f"{len(ds)} total frames | {len(dl)} total batches")
 
-    conv_net, nagy_net = load_transformer(
+    conv_net, nagy_net = load_stacked_model(
         "models/frame_compression_model_model_params.json",
         "models/frame_compression_model_classifier_conv.pt",
+        LovieNet,
         "models/frame_compression_model_transformer_model_params.json",
         "models/frame_compression_model_transformer.pt",
     )
@@ -55,7 +56,7 @@ def main(args):
                 compressed_frames, args.batch_size
             )
 
-            yy.append(nagy_net(x.unsqueeze(0), mask.unsqueeze(0).to(device)).squeeze(0))
+            yy.append(nagy_net(x.unsqueeze(0)).squeeze(0))
 
             if args.print_every > 0:
                 if i % args.print_every == args.print_every - 1:
@@ -71,6 +72,8 @@ def main(args):
                 break
 
         yy = torch.cat(yy, 0).to("cpu")
+
+        torch.save(yy, "model_output.pt")
 
         seg = Segmentation(yy)
         logging.info(f"Found {len(seg)} initial segments")

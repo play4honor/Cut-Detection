@@ -2,7 +2,7 @@ from frameID.net import FrameConvNet, FrameLinearNet
 from frameID.data import SupervisedFrameDataset
 
 import torch
-from torch.utils.data import DataLoader, ConcatDataset, Subset
+from torch.utils.data import DataLoader, ChainDataset, Subset
 
 import logging
 import os
@@ -31,7 +31,7 @@ CONV_OUTPUT_SIZE = 32
 # Output Network Design
 LINEAR_LAYERS = 2
 LINEAR_SIZE = 32
-OUTPUT_SIZE = 3
+OUTPUT_SIZE = 2
 
 # Training Details
 DATA_SIZE = 150_000
@@ -49,9 +49,9 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 
 # Initialize the dataset class and then split into train/valid.
 # 100% should come from a config file.
-data_dirs = [
+train_dirs = [
     "data/bengals-ravens",
-    "data/browns-ravens",
+    # "data/browns-ravens",
     "data/bears-ravens",
     "data/dolphins-ravens",
     "data/ravens-browns",
@@ -59,34 +59,35 @@ data_dirs = [
     # "data/ravens-packers",
     # "data/steelers-ravens",
 ]
-labs_files = ["frames.csv"] * len(data_dirs)
+train_labs_files = ["frames.csv"] * len(train_dirs)
 
-ds_list = [
+
+train_ds_list = [
     SupervisedFrameDataset(dir, lf, ext=".jpg")
-    for dir, lf in zip(data_dirs, labs_files)
+    for dir, lf in zip(train_dirs, train_labs_files)
 ]
 
-ds = ConcatDataset(ds_list)
+ds_train = ChainDataset(train_ds_list)
 
-idx_perm = torch.randperm(len(ds))
+valid_dirs = ["data/browns-ravens"]
+valid_labs_files = ["frames.csv"] * len(valid_dirs)
 
-train_idx = idx_perm[: math.floor(len(ds) * 0.75)].tolist()
-valid_idx = idx_perm[math.floor(len(ds) * 0.75) :].tolist()
+valid_ds_list = [
+    SupervisedFrameDataset(dir, lf, ext=".jpg")
+    for dir, lf in zip(valid_dirs, valid_labs_files)
+]
 
-ds_train = Subset(ds, train_idx)
-ds_valid = Subset(ds, valid_idx)
+ds_valid = ChainDataset(valid_ds_list)
 
 train_loader = DataLoader(
     ds_train,
     batch_size=BATCH_SIZE,
-    shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
 )
 valid_loader = DataLoader(
     ds_valid,
     batch_size=BATCH_SIZE,
-    shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
 )
@@ -176,8 +177,8 @@ if __name__ == "__main__":
         accum_loss = 0.0
         n_obs = 0
 
-        correct = torch.zeros([3]).to(device)
-        total = torch.zeros([3]).to(device)
+        correct = torch.zeros([OUTPUT_SIZE]).to(device)
+        total = torch.zeros([OUTPUT_SIZE]).to(device)
 
         conv_net.eval()
         linear_net.eval()
@@ -194,7 +195,7 @@ if __name__ == "__main__":
 
                 pc = torch.max(pred, dim=1)[1]
 
-                for i in range(3):
+                for i in range(OUTPUT_SIZE):
 
                     correct[i] += torch.sum(pc[labels == i] == labels[labels == i])
                     total[i] += torch.sum(labels == i)
@@ -212,9 +213,6 @@ if __name__ == "__main__":
 
             logging.info(f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.3f}")
             logging.info(f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.3f}")
-            logging.info(
-                f"Valid accuracy for blank: {(correct[2]/total[2]).item() :.3f}"
-            )
 
     # We don't have any fancy way to save checkpoints, or stop early or anything.
 

@@ -14,3 +14,4 @@ cpp/
 frameID.egg-info/
 !requirements.txt
 !args.txt
+*.pt

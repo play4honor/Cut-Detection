@@ -61,7 +61,6 @@ train_dirs = [
 ]
 train_labs_files = ["frames.csv"] * len(train_dirs)
 
-
 train_ds_list = [
     SupervisedFrameDataset(dir, lf, ext=".jpg")
     for dir, lf in zip(train_dirs, train_labs_files)
@@ -92,9 +91,9 @@ valid_loader = DataLoader(
     drop_last=False,
 )
 
-logging.info(
-    f"Training Batches: {len(train_loader)} | Validation Batches: {len(valid_loader)}"
-)
+# logging.info(
+#     f"Training Batches: {len(train_loader)} | Validation Batches: {len(valid_loader)}"
+# )
 
 if __name__ == "__main__":
 

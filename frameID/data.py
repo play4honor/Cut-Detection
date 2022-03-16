@@ -112,7 +112,7 @@ class SupervisedFrameDataset(IterableDataset):
         # Increment the current frame
         self.curr_frame += 1
 
-        if idx >= len(self):
+        if idx >= len(self.file_list):
             raise StopIteration
 
         p = self.file_list[idx]
@@ -130,9 +130,9 @@ class SupervisedFrameDataset(IterableDataset):
 
             return {"x": x, "y": label.long()}
 
-    def __len__(self):
+    # def __len__(self):
 
-        return len(self.file_list)
+    #     return len(self.file_list)
 
 
 class VideoDataset(IterableDataset):

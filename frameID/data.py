@@ -1,11 +1,13 @@
 import os
 import csv
 
+import logging
+
 import torch
 import torchvision.transforms as transforms
 from torchvision.io import ImageReadMode, read_image
 
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import Dataset, IterableDataset, get_worker_info
 
 import cv2
 
@@ -29,6 +31,21 @@ def open_video(video_path):
         "width": width,
         "height": height,
     }
+
+
+def split_iter_workers(worker_id):
+    """
+    Each worker operates on a portion of every video (dataset)
+    """
+    info = get_worker_info()
+    workers = info.num_workers
+
+    # For each dataset in the chained dataset, set the starting `curr_frame`
+    # based on the worker id of the worker (start the iter at worker_id * split size)
+    for ds in info.dataset.datasets:
+        split_size = len(ds) // workers
+        ds.curr_frame = worker_id * split_size
+        ds.stop_frame = (worker_id + 1) * split_size
 
 
 class SupervisedFrameDataset(IterableDataset):
@@ -81,6 +98,9 @@ class SupervisedFrameDataset(IterableDataset):
         if size is not None:
             self.file_list = self.file_list[: min(size, len(self.file_list))]
 
+        # We'll re-set this when we create workers.
+        self.stop_frame = len(self.file_list)
+
     def _parse_path(self, path):
 
         fileList = []
@@ -112,7 +132,7 @@ class SupervisedFrameDataset(IterableDataset):
         # Increment the current frame
         self.curr_frame += 1
 
-        if idx >= len(self.file_list):
+        if idx >= self.stop_frame:
             raise StopIteration
 
         p = self.file_list[idx]
@@ -124,15 +144,16 @@ class SupervisedFrameDataset(IterableDataset):
         # Check if image is blank
         if self._is_blank(x) or label.item() == 2:
 
+            logging.debug(f"Skipping {p}")
             return next(self)
 
         else:
 
             return {"x": x, "y": label.long()}
 
-    # def __len__(self):
+    def __len__(self):
 
-    #     return len(self.file_list)
+        return len(self.file_list)
 
 
 class VideoDataset(IterableDataset):

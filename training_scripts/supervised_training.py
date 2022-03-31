@@ -1,5 +1,5 @@
 from frameID.net import FrameConvNet, FrameLinearNet
-from frameID.data import SupervisedFrameDataset
+from frameID.data import SupervisedFrameDataset, split_iter_workers
 
 import torch
 from torch.utils.data import DataLoader, ChainDataset, Subset
@@ -51,7 +51,7 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 # 100% should come from a config file.
 train_dirs = [
     "data/bengals-ravens",
-    # "data/browns-ravens",
+    "data/browns-ravens",
     "data/bears-ravens",
     "data/dolphins-ravens",
     "data/ravens-browns",
@@ -83,12 +83,14 @@ train_loader = DataLoader(
     batch_size=BATCH_SIZE,
     num_workers=NUM_WORKERS,
     drop_last=False,
+    worker_init_fn=split_iter_workers,
 )
 valid_loader = DataLoader(
     ds_valid,
     batch_size=BATCH_SIZE,
     num_workers=NUM_WORKERS,
     drop_last=False,
+    worker_init_fn=split_iter_workers,
 )
 
 # logging.info(

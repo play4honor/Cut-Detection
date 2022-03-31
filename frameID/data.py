@@ -1,6 +1,8 @@
 import os
 import csv
 
+import logging
+
 import torch
 import torchvision.transforms as transforms
 from torchvision.io import ImageReadMode, read_image
@@ -142,6 +144,7 @@ class SupervisedFrameDataset(IterableDataset):
         # Check if image is blank
         if self._is_blank(x) or label.item() == 2:
 
+            logging.debug(f"Skipping {p}")
             return next(self)
 
         else:

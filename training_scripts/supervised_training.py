@@ -1,8 +1,8 @@
 from frameID.net import FrameConvNet, FrameLinearNet
-from frameID.data import SupervisedFrameDataset, split_iter_workers
+from frameID.data import PreindexedDataset, split_iter_workers
 
 import torch
-from torch.utils.data import DataLoader, ChainDataset, Subset
+from torch.utils.data import DataLoader, ConcatDataset, Subset
 
 import logging
 import os
@@ -49,7 +49,7 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 
 # Initialize the dataset class and then split into train/valid.
 # 100% should come from a config file.
-train_dirs = [
+data_dirs = [
     "data/bengals-ravens",
     "data/browns-ravens",
     "data/bears-ravens",
@@ -59,43 +59,40 @@ train_dirs = [
     # "data/ravens-packers",
     # "data/steelers-ravens",
 ]
-train_labs_files = ["frames.csv"] * len(train_dirs)
+labs_files = ["frame_index.json"] * len(data_dirs)
 
-train_ds_list = [
-    SupervisedFrameDataset(dir, lf, ext=".jpg")
-    for dir, lf in zip(train_dirs, train_labs_files)
+ds_list = [
+    PreindexedDataset(dir, lf, ext=".jpg") for dir, lf in zip(data_dirs, labs_files)
 ]
 
-ds_train = ChainDataset(train_ds_list)
+ds = ConcatDataset(ds_list)
 
-valid_dirs = ["data/browns-ravens"]
-valid_labs_files = ["frames.csv"] * len(valid_dirs)
+idx_perm = torch.randperm(len(ds))
 
-valid_ds_list = [
-    SupervisedFrameDataset(dir, lf, ext=".jpg")
-    for dir, lf in zip(valid_dirs, valid_labs_files)
-]
+train_idx = idx_perm[: math.floor(len(ds) * 0.75)].tolist()
+valid_idx = idx_perm[math.floor(len(ds) * 0.75) :].tolist()
 
-ds_valid = ChainDataset(valid_ds_list)
+ds_train = Subset(ds, train_idx)
+ds_valid = Subset(ds, valid_idx)
 
 train_loader = DataLoader(
     ds_train,
     batch_size=BATCH_SIZE,
+    shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
-    worker_init_fn=split_iter_workers,
 )
 valid_loader = DataLoader(
     ds_valid,
     batch_size=BATCH_SIZE,
+    shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
-    worker_init_fn=split_iter_workers,
 )
 
-# logging.info(
-#     f"Training Batches: {len(train_loader)} | Validation Batches: {len(valid_loader)}"
-# )
+logging.info(
+    f"Training Batches: {len(train_loader)} | Validation Batches: {len(valid_loader)}"
+)
 
 if __name__ == "__main__":
 

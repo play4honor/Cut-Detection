@@ -88,7 +88,7 @@ class PreindexedDataset(Dataset):
         x = read_image(p, self.read_mode)
         x = x.float() / 255
 
-        return {"x": x, "y": torch.tensor(label, dtype=torch.long)}
+        return {"x": x, "y": torch.tensor(label, dtype=torch.float)}
 
     def __len__(self):
 

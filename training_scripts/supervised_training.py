@@ -31,12 +31,12 @@ CONV_OUTPUT_SIZE = 32
 # Output Network Design
 LINEAR_LAYERS = 2
 LINEAR_SIZE = 32
-OUTPUT_SIZE = 2
+OUTPUT_SIZE = 1
 
 # Training Details
 DATA_SIZE = 150_000
 BATCH_SIZE = 128
-EPOCHS = 3
+EPOCHS = 4
 WRITE_EVERY_N = 1000
 OPTIMIZER = "AdamW"
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
             filter(lambda p: p.requires_grad, linear_net.parameters()),
         )
     )
-    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -148,7 +148,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             x = data["x"].to(device)
-            labels = data["y"].squeeze().to(device)
+            labels = data["y"].unsqueeze(-1).to(device)
             intermediate = conv_net(x)
             pred = linear_net(intermediate)
 
@@ -175,8 +175,8 @@ if __name__ == "__main__":
         accum_loss = 0.0
         n_obs = 0
 
-        correct = torch.zeros([OUTPUT_SIZE]).to(device)
-        total = torch.zeros([OUTPUT_SIZE]).to(device)
+        correct = torch.zeros([max(OUTPUT_SIZE, 2)]).to(device)
+        total = torch.zeros([max(OUTPUT_SIZE, 2)]).to(device)
 
         conv_net.eval()
         linear_net.eval()
@@ -185,17 +185,17 @@ if __name__ == "__main__":
             for i, data in enumerate(valid_loader):
 
                 x = data["x"].to(device)
-                labels = data["y"].squeeze().to(device)
+                labels = data["y"].unsqueeze(-1).to(device)
                 intermediate = conv_net(x)
                 pred = linear_net(intermediate)
 
                 loss = criterion(pred, labels)
 
-                pc = torch.max(pred, dim=1)[1]
+                pc = pred > 0
 
-                for i in range(OUTPUT_SIZE):
+                for i in range(max(OUTPUT_SIZE, 2)):
 
-                    correct[i] += torch.sum(pc[labels == i] == labels[labels == i])
+                    correct[i] += torch.sum(pc[labels == i] == i)
                     total[i] += torch.sum(labels == i)
 
                 accum_loss += loss.item()
@@ -209,8 +209,14 @@ if __name__ == "__main__":
                     accum_loss = 0.0
                     n_obs = 0.0
 
-            logging.info(f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.3f}")
-            logging.info(f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.3f}")
+            logging.info(
+                f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.3f}"
+                + f" | {(total[0] - correct[0]).item()} errors"
+            )
+            logging.info(
+                f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.3f}"
+                + f" | {(total[1] - correct[1]).item()} errors"
+            )
 
     # We don't have any fancy way to save checkpoints, or stop early or anything.
 

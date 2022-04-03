@@ -24,14 +24,14 @@ NUM_WORKERS = 3
 N_LAYERS = 2
 INPUT_SIZE = 32
 HIDDEN_SIZE = 128
-OUTPUT_SIZE = 3
+OUTPUT_SIZE = 1
 SEQ_LENGTH = 256
 
 # Training Details
 BATCH_SIZE = 128
 DROPOUT = 0.1
 EPOCHS = 7
-WRITE_EVERY_N = 1000
+WRITE_EVERY_N = 500
 OPTIMIZER = "AdamW"
 
 MODEL_DIR = "./models"
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     optimizer = opt_class(
         filter(lambda p: p.requires_grad, net.parameters()),
     )
-    criterion = torch.nn.CrossEntropyLoss(reduction="none", ignore_index=3)
+    criterion = torch.nn.BCEWithLogitsLoss(reduction="none")
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -99,16 +99,16 @@ if __name__ == "__main__":
 
             x = data["x"].to(device)
             # mask = data["mask"].to(device)
-            labels = data["y"].squeeze().to(device)
+            labels = data["y"].squeeze().to(device).reshape([-1, OUTPUT_SIZE])
             # weights = data["weight"].to(device)
-            pred = net(x)
+            pred = net(x).reshape([-1, OUTPUT_SIZE])
 
-            loss = criterion(
-                torch.reshape(pred, [-1, OUTPUT_SIZE]),
-                torch.reshape(labels, [-1]),
-            )
+            # mask padding
+            mask = labels <= 1
 
-            weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * 1)
+            loss = criterion(pred[mask], labels[mask])
+
+            weighted_loss = torch.sum(loss)
 
             weighted_loss.backward()
             optimizer.step()
@@ -131,8 +131,8 @@ if __name__ == "__main__":
         accum_loss = 0.0
         n_obs = 0
 
-        correct = torch.zeros([3]).to(device)
-        total = torch.zeros([3]).to(device)
+        correct = torch.zeros([max(OUTPUT_SIZE, 2)]).to(device)
+        total = torch.zeros([max(OUTPUT_SIZE, 2)]).to(device)
 
         net.eval()
         with torch.no_grad():
@@ -147,16 +147,16 @@ if __name__ == "__main__":
 
                 loss = criterion(
                     torch.reshape(pred, [-1, OUTPUT_SIZE]),
-                    torch.reshape(labels, [-1]),
+                    torch.reshape(labels, [-1, OUTPUT_SIZE]),
                 )
 
                 weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * 1)
 
-                pc = torch.max(pred, dim=2)[1]
+                pc = pred > 0
 
-                for i in range(3):
+                for i in range(max(OUTPUT_SIZE, 2)):
 
-                    correct[i] += torch.sum(pc[labels == i] == labels[labels == i])
+                    correct[i] += torch.sum(pc[labels == i] == i)
                     total[i] += torch.sum(labels == i)
 
                 accum_loss += weighted_loss.item()
@@ -171,13 +171,10 @@ if __name__ == "__main__":
                     n_obs = 0.0
 
             logging.info(
-                f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.5f} | {total[0] - correct[0]} total errors"
+                f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.5f} | {((total[0] - correct[0]) / 256).item()} total errors"
             )
             logging.info(
-                f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.5f} | {total[1] - correct[1]} total errors"
-            )
-            logging.info(
-                f"Valid accuracy for blank: {(correct[2]/total[2]).item() :.5f} | {total[2] - correct[2]} total errors"
+                f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.5f} | {((total[1] - correct[1]) / 256).item()} total errors"
             )
 
     # We don't have any fancy way to save checkpoints, or stop early or anything.

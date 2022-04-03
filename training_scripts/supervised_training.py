@@ -1,8 +1,8 @@
 from frameID.net import FrameConvNet, FrameLinearNet
-from frameID.data import SupervisedFrameDataset, split_iter_workers
+from frameID.data import PreindexedDataset, split_iter_workers
 
 import torch
-from torch.utils.data import DataLoader, ChainDataset, Subset
+from torch.utils.data import DataLoader, ConcatDataset, Subset
 
 import logging
 import os
@@ -31,12 +31,12 @@ CONV_OUTPUT_SIZE = 32
 # Output Network Design
 LINEAR_LAYERS = 2
 LINEAR_SIZE = 32
-OUTPUT_SIZE = 2
+OUTPUT_SIZE = 1
 
 # Training Details
 DATA_SIZE = 150_000
 BATCH_SIZE = 128
-EPOCHS = 3
+EPOCHS = 4
 WRITE_EVERY_N = 1000
 OPTIMIZER = "AdamW"
 
@@ -49,7 +49,7 @@ opt_class = getattr(torch.optim, OPTIMIZER)
 
 # Initialize the dataset class and then split into train/valid.
 # 100% should come from a config file.
-train_dirs = [
+data_dirs = [
     "data/bengals-ravens",
     "data/browns-ravens",
     "data/bears-ravens",
@@ -59,43 +59,40 @@ train_dirs = [
     # "data/ravens-packers",
     # "data/steelers-ravens",
 ]
-train_labs_files = ["frames.csv"] * len(train_dirs)
+labs_files = ["frame_index.json"] * len(data_dirs)
 
-train_ds_list = [
-    SupervisedFrameDataset(dir, lf, ext=".jpg")
-    for dir, lf in zip(train_dirs, train_labs_files)
+ds_list = [
+    PreindexedDataset(dir, lf, ext=".jpg") for dir, lf in zip(data_dirs, labs_files)
 ]
 
-ds_train = ChainDataset(train_ds_list)
+ds = ConcatDataset(ds_list)
 
-valid_dirs = ["data/browns-ravens"]
-valid_labs_files = ["frames.csv"] * len(valid_dirs)
+idx_perm = torch.randperm(len(ds))
 
-valid_ds_list = [
-    SupervisedFrameDataset(dir, lf, ext=".jpg")
-    for dir, lf in zip(valid_dirs, valid_labs_files)
-]
+train_idx = idx_perm[: math.floor(len(ds) * 0.75)].tolist()
+valid_idx = idx_perm[math.floor(len(ds) * 0.75) :].tolist()
 
-ds_valid = ChainDataset(valid_ds_list)
+ds_train = Subset(ds, train_idx)
+ds_valid = Subset(ds, valid_idx)
 
 train_loader = DataLoader(
     ds_train,
     batch_size=BATCH_SIZE,
+    shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
-    worker_init_fn=split_iter_workers,
 )
 valid_loader = DataLoader(
     ds_valid,
     batch_size=BATCH_SIZE,
+    shuffle=True,
     num_workers=NUM_WORKERS,
     drop_last=False,
-    worker_init_fn=split_iter_workers,
 )
 
-# logging.info(
-#     f"Training Batches: {len(train_loader)} | Validation Batches: {len(valid_loader)}"
-# )
+logging.info(
+    f"Training Batches: {len(train_loader)} | Validation Batches: {len(valid_loader)}"
+)
 
 if __name__ == "__main__":
 
@@ -132,7 +129,7 @@ if __name__ == "__main__":
             filter(lambda p: p.requires_grad, linear_net.parameters()),
         )
     )
-    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
 
     # Training loop
     for epoch in range(EPOCHS):
@@ -151,7 +148,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             x = data["x"].to(device)
-            labels = data["y"].squeeze().to(device)
+            labels = data["y"].unsqueeze(-1).to(device)
             intermediate = conv_net(x)
             pred = linear_net(intermediate)
 
@@ -178,8 +175,8 @@ if __name__ == "__main__":
         accum_loss = 0.0
         n_obs = 0
 
-        correct = torch.zeros([OUTPUT_SIZE]).to(device)
-        total = torch.zeros([OUTPUT_SIZE]).to(device)
+        correct = torch.zeros([max(OUTPUT_SIZE, 2)]).to(device)
+        total = torch.zeros([max(OUTPUT_SIZE, 2)]).to(device)
 
         conv_net.eval()
         linear_net.eval()
@@ -188,17 +185,17 @@ if __name__ == "__main__":
             for i, data in enumerate(valid_loader):
 
                 x = data["x"].to(device)
-                labels = data["y"].squeeze().to(device)
+                labels = data["y"].unsqueeze(-1).to(device)
                 intermediate = conv_net(x)
                 pred = linear_net(intermediate)
 
                 loss = criterion(pred, labels)
 
-                pc = torch.max(pred, dim=1)[1]
+                pc = pred > 0
 
-                for i in range(OUTPUT_SIZE):
+                for i in range(max(OUTPUT_SIZE, 2)):
 
-                    correct[i] += torch.sum(pc[labels == i] == labels[labels == i])
+                    correct[i] += torch.sum(pc[labels == i] == i)
                     total[i] += torch.sum(labels == i)
 
                 accum_loss += loss.item()
@@ -212,8 +209,14 @@ if __name__ == "__main__":
                     accum_loss = 0.0
                     n_obs = 0.0
 
-            logging.info(f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.3f}")
-            logging.info(f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.3f}")
+            logging.info(
+                f"Valid accuracy for A22: {(correct[0]/total[0]).item() :.3f}"
+                + f" | {(total[0] - correct[0]).item()} errors"
+            )
+            logging.info(
+                f"Valid accuracy for EZ: {(correct[1]/total[1]).item() :.3f}"
+                + f" | {(total[1] - correct[1]).item()} errors"
+            )
 
     # We don't have any fancy way to save checkpoints, or stop early or anything.
 

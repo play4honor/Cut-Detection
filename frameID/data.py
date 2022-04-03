@@ -1,10 +1,9 @@
 import os
 import csv
-
+import json
 import logging
 
 import torch
-import torchvision.transforms as transforms
 from torchvision.io import ImageReadMode, read_image
 
 from torch.utils.data import Dataset, IterableDataset, get_worker_info
@@ -46,6 +45,54 @@ def split_iter_workers(worker_id):
         split_size = len(ds) // workers
         ds.curr_frame = worker_id * split_size
         ds.stop_frame = (worker_id + 1) * split_size
+
+
+class PreindexedDataset(Dataset):
+
+    IMG_EXT = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".ppm",
+        ".bmp",
+        ".pgm",
+        ".tif",
+        ".tiff",
+        ".webp",
+    )
+
+    lab_enum = {"a22": 0, "ez": 1}
+
+    def __init__(self, path, frame_file: str, ext=".jpg", size=None):
+
+        super(PreindexedDataset, self).__init__()
+
+        if ext not in self.IMG_EXT:
+            raise ValueError(f"{ext} is not a valid image file extension.")
+
+        self.ext = ext
+        self.path = path
+        self.read_mode = ImageReadMode.UNCHANGED
+
+        with open(os.path.join(path, frame_file), "r") as f:
+
+            self.frame_info = json.load(f)
+
+        # Optionally limit the size of the dataset
+        if size is not None:
+            self.frame_info = self.frame_info[: min(size, len(self.frame_info))]
+
+    def __getitem__(self, idx):
+
+        p, label = self.frame_info[idx]
+        x = read_image(p, self.read_mode)
+        x = x.float() / 255
+
+        return {"x": x, "y": torch.tensor(label, dtype=torch.float)}
+
+    def __len__(self):
+
+        return len(self.frame_info)
 
 
 class SupervisedFrameDataset(IterableDataset):

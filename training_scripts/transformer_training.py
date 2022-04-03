@@ -31,7 +31,7 @@ SEQ_LENGTH = 256
 BATCH_SIZE = 128
 DROPOUT = 0.1
 EPOCHS = 7
-WRITE_EVERY_N = 1000
+WRITE_EVERY_N = 500
 OPTIMIZER = "AdamW"
 
 MODEL_DIR = "./models"
@@ -99,16 +99,16 @@ if __name__ == "__main__":
 
             x = data["x"].to(device)
             # mask = data["mask"].to(device)
-            labels = data["y"].squeeze().to(device)
+            labels = data["y"].squeeze().to(device).reshape([-1, OUTPUT_SIZE])
             # weights = data["weight"].to(device)
-            pred = net(x)
+            pred = net(x).reshape([-1, OUTPUT_SIZE])
 
-            loss = criterion(
-                torch.reshape(pred, [-1, OUTPUT_SIZE]),
-                torch.reshape(labels, [-1, OUTPUT_SIZE]),
-            )
+            # mask padding
+            mask = labels <= 1
 
-            weighted_loss = torch.sum(loss.view([BATCH_SIZE, SEQ_LENGTH]) * 1)
+            loss = criterion(pred[mask], labels[mask])
+
+            weighted_loss = torch.sum(loss)
 
             weighted_loss.backward()
             optimizer.step()

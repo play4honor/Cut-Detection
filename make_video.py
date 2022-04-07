@@ -132,7 +132,7 @@ def select_plays(cutDataDF, fileName, min=0, max=None):
 
     joined['captionStart'] = joined['length'].shift(1).cumsum()
     joined['captionStart'] = joined['captionStart'].fillna(0)
-    
+
     return joined
 
 def ffmpeg_make_clips(df, file, fileName='test', combine=True):
@@ -226,9 +226,13 @@ if __name__ == '__main__':
             print (df)
             
             plays = select_plays(df, f'cutData/{fileName}.csv')
-            print (plays)
             
+            if plays.empty:
+                print (f"No plays found for {game} and {fileName}")
+                sys.exit()
+
             if not plays.empty:
+                print (plays)
                 videoName = f"{game}_{fileName}_{clipType}"
                 captionFileName = create_captions(plays, videoName, team)
                 ffmpeg_make_clips(plays, f'videos/{game}.mp4', videoName)

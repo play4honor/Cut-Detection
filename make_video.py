@@ -210,8 +210,8 @@ if __name__ == '__main__':
 
     ffmpeg_string = ''
     videos = find_videos(game)
-    for game in videos:
-
+    for game in videos:    
+        
         #can skip making clips if they already exist using the combineOnly arg
         #this is vestigial, may remove soon
         if  combineOnly.lower() == 'yes':
@@ -219,6 +219,7 @@ if __name__ == '__main__':
                              f'{game}_{fileName}_list.txt -c copy '
                              f'{game}_{fileName}.mp4')
             print (ffmpeg_string)
+            input (".")
             subprocess.run(ffmpeg_string.split(' '))
 
         else:
